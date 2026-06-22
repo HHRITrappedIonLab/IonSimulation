@@ -124,7 +124,7 @@
     .panel .card h3 { margin-bottom:6px; font-size:14px; }
     .panel .row { margin:6px 0; }
     .panel #graph { height:54px; }
-    .panel .beams { width:92px; }
+    .panel .beams3d { transform:scale(.82); transform-origin:top center; margin-bottom:-22px; }
     .panel .beam-btn { font-size:15px; }
     .panel .beam-btn.z-beam { font-size:12px; }
     .panel .trans-info { margin:-2px 0 7px; padding:5px 8px; font-size:10.5px; line-height:1.45; }
@@ -167,16 +167,27 @@
   #intensity { background:linear-gradient(90deg,#2a2f63,#5be0ff); }
   #ionCount { background:linear-gradient(90deg,#2a2f63,#ffd45b); }
 
-  .beams { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
-           gap:6px; width:150px; margin:4px auto 0; aspect-ratio:1/1; }
-  .beams .bcell { display:flex; align-items:center; justify-content:center; }
+  /* 雷射方向：3D 座標軸排列（x 左右、y 上下、z 前後＝斜向深度） */
+  .beams3d { position:relative; width:164px; height:132px; margin:8px auto 2px; }
+  .bax { position:absolute; background:var(--line); }
+  .bax-x { left:13%; right:13%; top:50%; height:2px; margin-top:-1px; }
+  .bax-y { top:12%; bottom:12%; left:50%; width:2px; margin-left:-1px; }
+  .bax-z { left:50%; top:50%; width:120px; height:2px; transform:translate(-50%,-50%) rotate(-36deg); }
+  .beams3d-mid { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:22px; z-index:1; }
+  .beams3d .beam-btn { position:absolute; width:36px; height:36px; transform:translate(-50%,-50%); z-index:2; }
+  .beams3d .beam-btn.bpos-f { width:43px; height:43px; }            /* 前（近）大一點 */
+  .beams3d .beam-btn.bpos-b { width:30px; height:30px; opacity:.9; } /* 後（遠）小一點 */
+  .bpos-u { left:50%; top:12%; }  .bpos-d { left:50%; top:88%; }
+  .bpos-l { left:13%; top:50%; }  .bpos-r { left:87%; top:50%; }
+  .bpos-b { left:79%; top:24%; }  .bpos-f { left:21%; top:76%; }
+
   .beam-btn { width:100%; height:100%; border-radius:12px; border:1px solid var(--line);
               background:#0d1240; color:var(--muted); font-size:20px; cursor:pointer;
               display:flex; align-items:center; justify-content:center; transition:.12s; }
   .beam-btn.on { background:linear-gradient(180deg,#ff7a5a,#ff5a5a); color:#fff; border-color:#ff9a7a;
                  box-shadow:0 0 14px #ff5a5a77; }
-  .beam-btn.z-beam { font-size:15px; font-weight:700; }
-  .beams .mid { font-size:22px; }
+  .beam-btn.z-beam { font-size:14px; font-weight:700; }
+  sub, sup { font-size:0.72em; line-height:0; }   /* 公式上下標：大小適中、不撐高行 */
 
   .seg { display:flex; gap:6px; }
   .seg-btn { flex:1 1 0; border:1px solid var(--line); background:#0d1240; color:var(--muted);
@@ -269,7 +280,7 @@
 
       <div class="card">
         <h3 id="paramTitle">雷射參數 · ¹⁷¹Yb⁺ 369 nm</h3>
-        <div class="trans-info pro-only">¹⁷¹Yb⁺　²S₁/₂ → ²P₁/₂　λ = 369.5 nm　Γ/2π = 19.6 MHz　T<sub>D</sub> ≈ 0.47 mK</div>
+        <div class="trans-info pro-only"><sup>171</sup>Yb<sup>+</sup>　<sup>2</sup>S<sub>1/2</sub> → <sup>2</sup>P<sub>1/2</sub>　λ = 369.5 nm　Γ/2π = 19.6 MHz　T<sub>D</sub> ≈ 0.47 mK</div>
         <div class="row">
           <label><span id="detuneName">失諧 δ</span><span class="val" id="detuneLab">—</span></label>
           <input type="range" id="detune" min="-2.5" max="2.5" step="0.05" value="-0.5" />
@@ -285,16 +296,15 @@
         </div>
         <div class="row">
           <label>雷射方向（點一點開關）<span class="val" id="beamLab">6 道</span></label>
-          <div class="beams">
-            <div class="bcell"><button class="beam-btn on z-beam" data-beam="F" title="前方雷射（z 軸）">前</button></div>
-            <div class="bcell"><button class="beam-btn on" data-beam="U" title="上方雷射">⬇️</button></div>
-            <div class="bcell"></div>
-            <div class="bcell"><button class="beam-btn on" data-beam="L" title="左方雷射">➡️</button></div>
-            <div class="bcell mid">⚛️</div>
-            <div class="bcell"><button class="beam-btn on" data-beam="R" title="右方雷射">⬅️</button></div>
-            <div class="bcell"></div>
-            <div class="bcell"><button class="beam-btn on" data-beam="D" title="下方雷射">⬆️</button></div>
-            <div class="bcell"><button class="beam-btn on z-beam" data-beam="B" title="後方雷射（z 軸）">後</button></div>
+          <div class="beams3d">
+            <i class="bax bax-x"></i><i class="bax bax-y"></i><i class="bax bax-z"></i>
+            <span class="beams3d-mid">⚛️</span>
+            <button class="beam-btn on bpos-u" data-beam="U" title="上方雷射（+y）">⬇️</button>
+            <button class="beam-btn on bpos-d" data-beam="D" title="下方雷射（−y）">⬆️</button>
+            <button class="beam-btn on bpos-l" data-beam="L" title="左方雷射（−x）">➡️</button>
+            <button class="beam-btn on bpos-r" data-beam="R" title="右方雷射（+x）">⬅️</button>
+            <button class="beam-btn on z-beam bpos-b" data-beam="B" title="後方雷射（+z／遠）">後</button>
+            <button class="beam-btn on z-beam bpos-f" data-beam="F" title="前方雷射（−z／近）">前</button>
           </div>
         </div>
       </div>
@@ -330,11 +340,11 @@
             <input type="range" id="rfOmega" min="24" max="90" step="1" value="39" />
           </div>
           <div class="row">
-            <label>RF 電壓 V_RF <span class="val" id="rfAmpLab">305</span></label>
+            <label>RF 電壓 V<sub>RF</sub> <span class="val" id="rfAmpLab">305</span></label>
             <input type="range" id="rfAmp" min="120" max="520" step="5" value="305" />
           </div>
           <div class="row">
-            <label>DC 端蓋電壓 U_DC（軸向）<span class="val" id="dcLab">1.0</span></label>
+            <label>DC 端蓋電壓 U<sub>DC</sub>（軸向）<span class="val" id="dcLab">1.0</span></label>
             <input type="range" id="dcVolt" min="0.3" max="4" step="0.1" value="1" />
           </div>
           <div class="row">
@@ -439,14 +449,14 @@
   // 主題：切換文字（顏色/字體由 CSS 的 body.pro 處理）
   const TXT = {
     title:{ pro:'雷射冷卻 · 線形離子阱<span class="sp">模擬器</span>', kids:'❄️ 雷射冷凍離子<span class="sp">大作戰</span> 🔦' },
-    sub:{ pro:'¹⁷¹Yb⁺ 369 nm Doppler 雷射冷卻 × 線形 Paul trap：調失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉）',
+    sub:{ pro:'<sup>171</sup>Yb<sup>+</sup> 369 nm Doppler 雷射冷卻 × 線形 Paul trap：調失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉）',
           kids:'在立體離子阱裡用雷射把離子「凍」起來，排成一條離子鏈！（拖曳畫面可 360° 旋轉看立體）' },
     win:{ pro:'已形成庫倫晶體', kids:'🎉 結晶成功！' },
-    paramTitle:{ pro:'雷射參數 · ¹⁷¹Yb⁺ 369 nm', kids:'🎛️ 調整雷射參數' },
+    paramTitle:{ pro:'雷射參數 · <sup>171</sup>Yb<sup>+</sup> 369 nm', kids:'🎛️ 調整雷射參數' },
     detuneName:{ pro:'失諧 δ', kids:'雷射顏色（失諧）' },
-    intensityName:{ pro:'飽和參數 s = I/I_sat', kids:'雷射強度' },
+    intensityName:{ pro:'飽和參數 s = I/I<sub>sat</sub>', kids:'雷射強度' },
     tempK:{ pro:'溫度 T', kids:'熱度' },
-    speedK:{ pro:'v_rms', kids:'平均速度' },
+    speedK:{ pro:'v<sub>rms</sub>', kids:'平均速度' },
     scale:{ pro:'<span>−Γ</span><b>−Γ/2 最佳</b><span>0 共振</span><span>+Γ 加熱</span>',
             kids:'<span>🔴 太紅</span><b>❄️ 最佳</b><span>🟢 對準</span><span>🔵 太藍 🔥</span>' },
   };
@@ -454,13 +464,13 @@
     theme = t;
     document.body.classList.toggle('pro', t === 'pro');
     document.querySelector('h1').innerHTML = TXT.title[t];
-    document.querySelector('header p').textContent = TXT.sub[t];
+    document.querySelector('header p').innerHTML = TXT.sub[t];
     $('winTitle').textContent = TXT.win[t];
-    $('paramTitle').textContent = TXT.paramTitle[t];
-    $('detuneName').textContent = TXT.detuneName[t];
-    $('intensityName').textContent = TXT.intensityName[t];
-    $('tempK').textContent = TXT.tempK[t];
-    $('speedK').textContent = TXT.speedK[t];
+    $('paramTitle').innerHTML = TXT.paramTitle[t];
+    $('detuneName').innerHTML = TXT.detuneName[t];
+    $('intensityName').innerHTML = TXT.intensityName[t];
+    $('tempK').innerHTML = TXT.tempK[t];
+    $('speedK').innerHTML = TXT.speedK[t];
     $('detuneScale').innerHTML = TXT.scale[t];
     document.querySelectorAll('.theme-switch button').forEach(b => b.classList.toggle('on', b.dataset.theme === t));
     if (t === 'kids' && params.trapModel === 'rf') setTrapModel('secular');   // RF 為專業版專屬
@@ -600,7 +610,7 @@
       ? '<span style="color:var(--good)">✓ 穩定</span>'
       : '<span style="color:var(--hot)">✕ 不穩定（離子流失）</span>';
     $('secularReadout').innerHTML =
-      `secular 頻率　徑向 ω_r/2π = <b>${(f.wr * FREQ_MHZ).toFixed(2)}</b> MHz　軸向 ω_z/2π = <b>${(f.wz * FREQ_MHZ).toFixed(2)}</b> MHz<br>` +
+      `secular 頻率　徑向 ω<sub>r</sub>/2π = <b>${(f.wr * FREQ_MHZ).toFixed(2)}</b> MHz　軸向 ω<sub>z</sub>/2π = <b>${(f.wz * FREQ_MHZ).toFixed(2)}</b> MHz<br>` +
       `Mathieu　q = <b>${f.q.toFixed(2)}</b>　a = <b>${f.a.toFixed(3)}</b>　${ok}`;
   }
   document.querySelectorAll('[data-trap]').forEach(btn => {
