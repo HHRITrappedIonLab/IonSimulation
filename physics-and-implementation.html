@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>雷射冷卻離子阱模擬 — 物理原理與實作方法</title>
+<style>
+  :root{
+    --bg:#f5f8fc; --bg2:#ffffff; --panel:#ffffff; --line:#dde4ee;
+    --ink:#1f2a37; --muted:#5c6b7e; --accent:#0c8f82; --violet:#7c3aed;
+    --warm:#a9711a; --steel:#56678a; --good:#0a8f63; --hot:#d4493b;
+    --mono:"SF Mono","JetBrains Mono","Fira Code",ui-monospace,Menlo,Consolas,monospace;
+    --font:"Inter","SF Pro Display",-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:radial-gradient(1200px 720px at 50% -8%,#e7f0fb 0%,#f1f6fc 55%,var(--bg) 100%);
+        color:var(--ink); font-family:var(--font); line-height:1.72; font-size:16px; }
+  .wrap{ max-width:1180px; margin:0 auto; padding:28px 22px 80px; display:grid;
+         grid-template-columns:228px 1fr; gap:34px; }
+  @media(max-width:900px){ .wrap{ grid-template-columns:1fr; } nav.toc{ position:static !important; height:auto !important; } }
+
+  header.top{ grid-column:1/-1; border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:6px; }
+  header.top h1{ margin:0 0 6px; font-size:clamp(22px,3.4vw,32px); letter-spacing:.3px; font-weight:680; color:#16202d; }
+  header.top h1 b{ color:var(--accent); }
+  header.top p{ margin:0; color:var(--muted); font-size:14.5px; }
+  .tag{ display:inline-block; font-family:var(--mono); font-size:12px; color:var(--accent);
+        background:#e6f6f3; border:1px solid #bfe6df; border-radius:999px; padding:2px 10px; margin-top:10px; }
+
+  nav.toc{ position:sticky; top:18px; align-self:start; height:calc(100vh - 40px); overflow:auto;
+           font-size:13.5px; border-right:1px solid var(--line); padding-right:14px; }
+  nav.toc a{ display:block; color:var(--muted); text-decoration:none; padding:3px 0; }
+  nav.toc a:hover{ color:var(--accent); }
+  nav.toc a.h2{ padding-left:12px; font-size:12.5px; opacity:.9; }
+  nav.toc .grp{ color:var(--accent); font-size:11px; text-transform:uppercase; letter-spacing:1px; margin:14px 0 4px; font-weight:700; }
+
+  main{ min-width:0; }
+  section{ margin:0 0 38px; }
+  h2{ font-size:21px; margin:34px 0 12px; padding-top:10px; border-top:1px solid var(--line); font-weight:680; color:#16202d; }
+  h2 .n{ color:var(--accent); font-family:var(--mono); font-size:15px; margin-right:8px; }
+  h3{ font-size:16.5px; margin:22px 0 8px; color:#2a3a4e; font-weight:660; }
+  p{ margin:10px 0; }
+  .muted{ color:var(--muted); }
+  strong{ color:#0b1220; font-weight:650; }
+  code{ font-family:var(--mono); font-size:13.5px; background:#eef2f8; border:1px solid var(--line);
+        padding:1px 6px; border-radius:6px; color:#0c7a6f; }
+  a.ref{ color:var(--accent); text-decoration:none; border-bottom:1px dotted var(--accent); }
+
+  /* equation block */
+  .eq{ background:#f0f5fb; border:1px solid var(--line); border-left:3px solid var(--accent);
+       border-radius:10px; padding:14px 18px; margin:16px 0; overflow-x:auto;
+       font-family:var(--mono); font-size:15px; color:#1d2a3b; text-align:center;
+       box-shadow:0 1px 2px rgba(30,50,90,.04); }
+  .eq .lbl{ float:right; color:var(--muted); font-size:12px; }
+  .frac{ display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 .25em; }
+  .frac>span{ padding:0 .4em; }
+  .frac>.den{ border-top:1px solid #5f7894; margin-top:2px; padding-top:2px; }
+  .note{ background:#eafaf3; border:1px solid #c2e8d7; border-left:3px solid var(--good);
+         border-radius:10px; padding:12px 16px; margin:16px 0; font-size:14.5px; }
+  .note b{ color:#0a7d57; }
+  .warn{ border-color:#f0e0c2; border-left-color:var(--warm); background:#fdf6ea; }
+  .warn b{ color:#9a6212; }
+
+  /* code block */
+  pre{ background:#f6f8fb; border:1px solid var(--line); border-radius:11px; padding:14px 16px;
+       overflow-x:auto; font-family:var(--mono); font-size:13px; line-height:1.6; margin:14px 0;
+       color:#283443; box-shadow:0 1px 2px rgba(30,50,90,.04); }
+  pre .c{ color:#7a8aa0; }       /* comment */
+  pre .k{ color:#0a59c2; }       /* keyword */
+  pre .s{ color:#0a7d4f; }       /* string/num */
+  pre .f{ color:#9a5a12; }       /* func */
+  .filechip{ font-family:var(--mono); font-size:11.5px; color:var(--accent); margin-bottom:-6px; font-weight:600; }
+
+  table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; }
+  th,td{ border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; }
+  th{ background:#eaf1f8; color:#0b6f64; font-weight:650; }
+  tr:nth-child(even) td{ background:#fafbfd; }
+  td code{ white-space:nowrap; }
+
+  .map{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0; }
+  @media(max-width:680px){ .map{ grid-template-columns:1fr; } }
+  .map .col{ background:#f5f9fd; border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .map .col h4{ margin:0 0 8px; font-size:13.5px; }
+  .map .phys h4{ color:var(--violet); }
+  .map .code h4{ color:var(--accent); }
+  kbd{ font-family:var(--mono); font-size:12px; background:#eef2f8; border:1px solid var(--line);
+       border-radius:5px; padding:1px 6px; }
+  .pill{ font-family:var(--mono); font-size:11.5px; padding:1px 7px; border-radius:999px; border:1px solid var(--line); }
+  .pill.rf{ color:var(--warm); } .pill.gnd{ color:var(--steel); } .pill.v{ color:var(--violet); }
+  sub,sup{ font-size:.72em; }
+  footer{ grid-column:1/-1; border-top:1px solid var(--line); margin-top:30px; padding-top:16px;
+          color:var(--muted); font-size:13px; }
+</style>
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']]
+    },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>雷射冷卻離子阱模擬 — <b>物理原理與實作方法</b></h1>
+    <p>把模擬背後的真實物理（Doppler 雷射冷卻、線形 Paul trap、庫倫晶體）與程式中的數值方法、3D 渲染逐項對應說明。對象：物理 / 程式背景讀者。</p>
+    <span class="tag">¹⁷¹Yb⁺ · 369 nm · Γ/2π = 19.6 MHz · T_D ≈ 0.47 mK</span>
+  </header>
+
+  <nav class="toc">
+    <div class="grp">物理原理</div>
+    <a href="#sys">0 · 物理系統概觀</a>
+    <a href="#temp">1 · 溫度＝動能</a>
+    <a href="#press">2 · 輻射壓與光子動量</a>
+    <a href="#doppler">3 · 都普勒效應與選擇性散射</a>
+    <a href="#force">4 · 冷卻力與光學黏團</a>
+    <a href="#limit">5 · 都普勒冷卻極限</a>
+    <a href="#trap">6 · 線形 Paul trap</a>
+    <a href="#crystal">7 · 庫倫離子鏈</a>
+    <div class="grp">數值實作</div>
+    <a href="#model">8 · 運動方程與積分</a>
+    <a href="#laser-impl">9 · 雷射冷卻的實作</a>
+    <a href="#coulomb-impl">10 · 庫倫力與穩定性</a>
+    <a href="#units">11 · 單位換算（→ 物理量）</a>
+    <div class="grp">渲染 / 結構</div>
+    <a href="#render">12 · 3D 投影與深度排序</a>
+    <a href="#electrode">13 · 電極與雷射的繪製</a>
+    <a href="#code">14 · 程式結構與測試</a>
+    <a href="#real">15 · 對應真實實驗</a>
+  </nav>
+
+  <main>
+    <!-- ============ 0 ============ -->
+    <section id="sys">
+      <h2><span class="n">00</span>物理系統概觀</h2>
+      <p>模擬的對象是一群<strong>帶單位正電的離子</strong>，被關在<strong>線形 Paul trap</strong>裡，並用<strong>紅失諧的 369&nbsp;nm 雷射</strong>從六個方向照射。三股作用同時進行：</p>
+      <table>
+        <tr><th>作用</th><th>物理</th><th>在程式中的角色</th></tr>
+        <tr><td>阱的束縛</td><td>RF 贗位能 + DC 端蓋 → 三維非等向諧振位能</td><td><code>−(Kx·x, Ky·y, Kz·z)</code>，Kx≪Ky=Kz</td></tr>
+        <tr><td>離子互斥</td><td>庫倫力 <code>∝ 1/r²</code></td><td>軟化後的成對加速度累加</td></tr>
+        <tr><td>雷射冷卻</td><td>Doppler 都普勒冷卻 + 反衝加熱</td><td>平均光壓力 + 隨機反衝擴散</td></tr>
+      </table>
+      <p>結果：高溫亂跑的離子被雷射<strong>阻尼</strong>下來，最後在阱中央排成一條<strong>線形庫倫晶體（離子鏈）</strong>。這正是離子阱量子電腦裡 qubit 暫存器的樣子。</p>
+    </section>
+
+    <!-- ============ 1 ============ -->
+    <section id="temp">
+      <h2><span class="n">01</span>溫度＝動能</h2>
+      <p>「溫度」在這裡就是離子的<strong>平均動能</strong>。每個自由度按能量均分定理帶 \(\tfrac12 k_B T\)：</p>
+      <div class="eq"><span class="lbl">(1)</span>
+        \[ \langle E_k\rangle = \tfrac12 m\langle v^2\rangle = \frac{f}{2}\,k_B T \quad\Rightarrow\quad T \propto \langle v^2\rangle = v_{\mathrm{rms}}^2 \]
+      </div>
+      <p>所以「讓離子變冷」＝「讓 \(v_{\mathrm{rms}}\) 變小」。畫面上的顏色（藍冷↔紅熱）、溫度計、以及專業版的 <code>T (mK)</code> 都直接由 \(v_{\mathrm{rms}}\) 換算。</p>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="press">
+      <h2><span class="n">02</span>輻射壓與光子動量</h2>
+      <p>每顆被吸收的光子帶動量 \(\hbar k\)（\(k = 2\pi/\lambda\)）。吸收後離子得到一記沿光束方向的<strong>動量 kick</strong>；隨後自發輻射把光子往隨機方向吐出。多次循環下：</p>
+      <ul>
+        <li><strong>吸收</strong>的反衝總是沿著光束方向 → 有方向性 → 可造成淨力。</li>
+        <li><strong>自發輻射</strong>方向隨機 → 平均為零，但其漲落造成<strong>加熱（反衝擴散）</strong>。</li>
+      </ul>
+      <p>單顆光子對速度的改變量 \(v_{\text{recoil}} = \hbar k/m\)。冷卻就是「方向性吸收」勝過「隨機反衝加熱」的結果。</p>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section id="doppler">
+      <h2><span class="n">03</span>都普勒效應與選擇性散射</h2>
+      <p>關鍵在於離子<strong>會動</strong>。在離子的參考系裡，看到的雷射頻率被都普勒平移；對應的<strong>有效失諧</strong>為：</p>
+      <div class="eq"><span class="lbl">(2)</span>
+        \[ \delta' = \delta - \mathbf{k}\cdot\mathbf{v} \quad,\quad \delta = \omega_L - \omega_0 \]
+      </div>
+      <p>其中 \(\delta\) 是雷射對原子共振的失諧（紅失諧 \(\delta&lt;0\)）。散射率採<strong>勞侖茲線型（Lorentzian）</strong>：</p>
+      <div class="eq"><span class="lbl">(3)</span>
+        \[ R(v) = \frac{\Gamma}{2}\cdot\frac{s}{1 + s + (2\delta'/\Gamma)^2} \]
+      </div>
+      <p>\(s = I/I_{\text{sat}}\) 是飽和參數，\(\Gamma\) 是上能態的自然線寬。重點：散射率在 \(\delta' = 0\)（離子恰好「看到」共振）時最大。</p>
+      <div class="note"><b>選擇性的精髓：</b>把雷射調成<strong>紅失諧</strong>（\(\delta&lt;0\)）。當離子<strong>迎著光束</strong>跑（\(\mathbf{k}\cdot\mathbf{v}&lt;0\)），\(\delta' = \delta - \mathbf{k}\cdot\mathbf{v}\) 被往 0 推 → 更容易散射；而<strong>順著光束</strong>跑的離子 \(\delta'\) 更偏離共振 → 較少散射。於是「迎面而來的離子」被優先打、被推回 → 減速。</div>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section id="force">
+      <h2><span class="n">04</span>冷卻力與光學黏團（optical molasses）</h2>
+      <p>沿一軸放一對對向光束，淨力是兩束散射力之差（力大小 \(= \hbar k\cdot R\)）：</p>
+      <div class="eq"><span class="lbl">(4)</span>
+        \[ F = \hbar k\,\bigl[\,R(\delta - kv) - R(\delta + kv)\,\bigr] \]
+      </div>
+      <p>對小速度展開（一階）得到<strong>黏滯阻尼力</strong>：</p>
+      <div class="eq"><span class="lbl">(5)</span>
+        \[ F \approx -\beta v \quad,\quad \beta = -4\hbar k^2 s\,\frac{(2\delta/\Gamma)}{\bigl[\,1 + s + (2\delta/\Gamma)^2\,\bigr]^2} \]
+      </div>
+      <p>對<strong>紅失諧 \(\delta&lt;0\)</strong>：\(\beta&gt;0\) → \(F = -\beta v\) 是阻尼 → <strong>冷卻</strong>；對<strong>藍失諧 \(\delta&gt;0\)</strong>：\(\beta&lt;0\) → 反阻尼 → <strong>加熱</strong>（模擬裡真的會看到離子越跑越快）。從六個方向都放光束，就能同時阻尼三個維度的運動 → 三維「光學黏團」。</p>
+      <div class="warn note"><b>共振（\(\delta=0\)）為何冷不下來？</b> 此時 \(\beta=0\)，淨阻尼消失；散射依然很強 → 只剩反衝加熱主導，溫度衝到高穩態。模擬裡把失諧滑桿放到 0 就能重現這個現象。</div>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section id="limit">
+      <h2><span class="n">05</span>都普勒冷卻極限</h2>
+      <p>冷卻（阻尼）與加熱（反衝擴散 \(D\)）在穩態平衡：\(\langle v^2\rangle = D/2\beta\)。把兩者的顯式代入，最低溫出現在 \(\delta = -\Gamma/2\)、低飽和極限：</p>
+      <div class="eq"><span class="lbl">(6)</span>
+        \[ k_B T_D = \frac{\hbar\Gamma}{2} \quad\Rightarrow\quad T_D = \frac{\hbar\Gamma}{2k_B} \]
+      </div>
+      <p>對 ¹⁷¹Yb⁺ 的 ²P<sub>1/2</sub>（壽命 ≈ 8.1 ns，Γ/2π ≈ 19.6 MHz）：</p>
+      <div class="eq">\[ T_D = \frac{\hbar\,(2\pi\cdot 19.6\,\text{MHz})}{2k_B} \approx \mathbf{0.47}\ \textbf{mK} \]</div>
+      <p>離子永遠有殘餘抖動，<strong>無法到絕對零度</strong>。模擬刻意保留這個地板（見 <a class="ref" href="#units">§11</a>），專業版的溫度讀數也鎖在 \(T_D\) 以上。</p>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section id="trap">
+      <h2><span class="n">06</span>線形 Paul trap：贗位能與非等向束縛</h2>
+      <p>真實線形阱用<strong>射頻（RF）四極場</strong>提供徑向束縛——交流電場本身不能靜態囚禁帶電粒子（Earnshaw 定理），但快速振盪的 RF 場時間平均後產生有效的<strong>贗位能（pseudopotential）</strong>，等效於徑向諧振阱；軸向則靠<strong>DC 端蓋</strong>提供較弱的束縛。</p>
+      <p>離子在比 RF 慢的時間尺度上做<strong>secular（長期）運動</strong>，等效於三維非等向諧振子：</p>
+      <div class="eq"><span class="lbl">(7)</span>
+        \( \mathbf{a} = -(\,\omega_x^2 x,\ \omega_y^2 y,\ \omega_z^2 z\,) \)
+        ，且&nbsp; \( \omega_y,\omega_z \)（徑向，強）\( \gg \omega_x \)（軸向，弱）
+      </div>
+      <p>因為軸向（x）束縛最弱，離子沿 x 軸排開成一直線。</p>
+      <div class="note"><b>兩種阱模型（可切換）：</b>預設用 secular 贗位能近似（<code>Kx, Ky, Kz</code> 靜態諧振力），快又乾淨；專業版另提供<strong>「真實 RF」模式</strong>，顯式積分時變四極場 → 會出現真實的 <strong>micromotion</strong>（見下）。把 Ky=Kz 調到接近 Kx，會看到從線形鏈過渡到 zigzag、再到 3D 團狀晶體。</div>
+
+      <h3>真實 RF 模式：顯式積分與 micromotion</h3>
+      <p>RF 模式不再用時間平均，而是逐時積分時變四極場。標準型是 <strong>Mathieu 方程</strong>（\( \tau = \Omega t/2 \)）：</p>
+      <div class="eq"><span class="lbl">(7b)</span>
+        \[ \frac{d^2 u}{d\tau^2} + \big[\,a_u - 2q_u\cos(2\tau)\,\big]\,u = 0 \]
+      </div>
+      <p>程式中實際積分的三維加速度（軸向 x 為 DC 靜態、徑向 y,z 為 DC 散焦＋反相 RF）：</p>
+      <div class="eq"><span class="lbl">(7c)</span>
+        \[ \ddot{x} = -K_x x,\quad
+           \ddot{y} = \Big(\tfrac{K_x}{2} - A\cos\Omega t\Big)y + F_{\text{stray}},\quad
+           \ddot{z} = \Big(\tfrac{K_x}{2} + A\cos\Omega t\Big)z \]
+      </div>
+      <p><strong>旋鈕 → secular 頻率（程式直接這樣算）</strong>：使用者設定物理旋鈕 — RF 頻率 \( \Omega \)、RF 電壓（\( A \propto V_{\text{RF}} \)）、DC 端蓋電壓（\( K_x \propto U_{\text{DC}} \)）；secular 頻率與 Mathieu \( (a,q) \) 都是<strong>算出來的結果</strong>：</p>
+      <div class="eq"><span class="lbl">(7d)</span>
+        \[ \omega_r = \sqrt{\frac{A^2}{2\Omega^2} - \frac{K_x}{2}},\quad
+           \omega_z = \sqrt{K_x},\quad
+           q = \frac{2A}{\Omega^2},\quad a = \frac{4K_x}{\Omega^2} \]
+      </div>
+      <p>其中 \( A^2/2\Omega^2 \) 是 RF <strong>贗位能</strong>給的徑向剛性，\( K_x/2 \) 是 DC 端蓋的徑向散焦。穩定需 \( q \lesssim 0.908 \) 且 \( \omega_r^2>0 \)，否則徑向失去束縛、離子流失（介面會即時標示）。把預設 \( \Omega,A \) 調回時，\( \omega_r \) 恰好回到 secular 模式的值，兩模式冷晶體一致。</p>
+      <p><strong>micromotion</strong>：離子在 RF 頻率 \( \Omega \) 上的受迫快振，振幅正比於離 RF 零點（軸線）的距離：</p>
+      <div class="eq"><span class="lbl">(7e)</span>
+        \[ x_{\text{mm}} \approx \frac{A}{\Omega^2}\,\rho \approx \frac{q}{2}\,\rho,
+           \qquad \rho = \sqrt{y^2+z^2} \]
+      </div>
+      <p>所以：冷卻到軸線上（\( \rho\to0 \)）→ micromotion 消失；一個<strong>雜散 DC 場</strong> \( F_{\text{stray}} \) 把平衡位置推到 \( \rho_{\text{eq}} = F_{\text{stray}}/\omega_r^2 \) → 即使冷晶體也有殘餘的 <strong>excess micromotion</strong>。這正是實驗室要「<strong>補償微運動</strong>」的情境（過量微運動造成加熱與二階都普勒頻移）。</p>
+      <div class="note"><b>單位錨定：</b>介面把 \( \Omega \) 等角頻率乘上一個固定係數顯示成 MHz（錨定成預設 \( \Omega/2\pi\approx20 \) MHz），讓數字有實感（\( \omega_r/2\pi\sim\!3 \) MHz、\( \omega_z/2\pi\sim\!0.5 \) MHz）；<strong>絕對尺度是選定的，但比值與無因次的 \( (a,q) \) 是精確的</strong>。</div>
+      <div class="note warn"><b>實作要點：</b>RF 振盪比 secular 運動快很多，需<strong>更小的時間步</strong>（RF 模式自動把 substeps 由 3 提到 9）。模擬刻意讓 \( \Omega \) 只比 secular 頻率高約一個數量級（非真實的 MHz），使 micromotion <strong>看得見</strong>又能即時計算。溫度讀數是<strong>總</strong>動能（含 micromotion）——所以加大雜散場時溫度會上升，這在物理上正確（excess micromotion = 額外能量）。</div>
+    </section>
+
+    <!-- ============ 7 ============ -->
+    <section id="crystal">
+      <h2><span class="n">07</span>庫倫離子鏈</h2>
+      <p>離子同性相斥（庫倫力），夠冷時動能不足以亂跑，於是停在「阱的束縛」與「彼此斥力」平衡的位置，形成規則的<strong>庫倫晶體</strong>。一維鏈的平衡位置由下式決定（無因次化後）：</p>
+      <div class="eq"><span class="lbl">(8)</span>
+        \[ u_m - \sum_{n&lt;m}\frac{1}{(u_m-u_n)^2} + \sum_{n&gt;m}\frac{1}{(u_m-u_n)^2} = 0 \]
+      </div>
+      <p>解的特徵是<strong>中央間距較密、兩端較疏</strong>（中央離子被兩側更多鄰居往內擠）。模擬冷卻後量到的鏈正是這個分佈——這也是單元測試檢查的項目之一。</p>
+    </section>
+
+    <!-- ============ 8 ============ -->
+    <section id="model">
+      <h2><span class="n">08</span>運動方程與積分</h2>
+      <p>每顆離子的總加速度是三項之和：</p>
+      <div class="eq"><span class="lbl">(9)</span>
+        \[ m\,\mathbf{a}_i = -\mathbf{K}\circ\mathbf{r}_i + \sum_{j\neq i}\frac{q^2}{4\pi\varepsilon_0}\,\frac{(\mathbf{r}_i-\mathbf{r}_j)}{|\mathbf{r}_i-\mathbf{r}_j|^3} + \mathbf{F}_{\text{laser}}(\mathbf{v}_i) \]
+      </div>
+      <p>用<strong>半隱式（symplectic）Euler</strong>積分，每幀切成數個 substep 以保穩定：先用力更新速度，再用新速度更新位置。</p>
+      <div class="filechip">physics.js · step()</div>
+      <pre><span class="c">// 每個 step 切成 sub 個子步，h = dt/sub</span>
+<span class="k">for</span> (<span class="k">let</span> st = 0; st &lt; sub; st++) {
+  <span class="c">// (1) 保守力 → 半隱式 Euler 更新速度</span>
+  <span class="k">for</span> (<span class="k">let</span> i = 0; i &lt; ions.length; i++) {
+    <span class="f">conservativeAccel</span>(state, i, p, acc);     <span class="c">// 阱 + 3D 庫倫</span>
+    ions[i].vx += acc.ax * h; ions[i].vy += acc.ay * h; ions[i].vz += acc.az * h;
+  }
+  <span class="c">// (2) 雷射冷卻：平均光壓 + 反衝擴散（見 §9）</span>
+  <span class="c">// (3) 更新位置 + 速度/位置上限（數值保險）</span>
+  <span class="k">for</span> (...) { ion.x += ion.vx * h; ... ; <span class="c">/* clamp 速度、球形邊界反彈 */</span> }
+}</pre>
+      <p class="muted">半隱式 Euler 對含阻尼的諧振系統穩定且便宜；substep + 速度上限 + 邊界反彈讓極端參數（超高光強、大量離子）也不會發散。</p>
+    </section>
+
+    <!-- ============ 9 ============ -->
+    <section id="laser-impl">
+      <h2><span class="n">09</span>雷射冷卻的實作：平均光壓 + 反衝擴散</h2>
+      <p>真實過程是「離散的單光子散射事件」。但若直接對每次散射打一記 \(\hbar k\)，在遊戲尺度下這些離散 kick 的<strong>散粒雜訊</strong>會遠大於微弱的阻尼，導致冷卻不穩。因此本模擬把它拆成兩個在物理上對應的部分：</p>
+      <div class="map">
+        <div class="col phys"><h4>物理</h4>
+          <p>① <strong>平均輻射壓</strong>（系綜平均的散射力）<br>\(F_b = \hbar k\,n\cdot R(\delta')\)</p>
+          <p>② <strong>反衝擴散</strong>（自發輻射的漲落）<br>動量在 3D 做隨機漫步，擴散係數 \(D \propto R\)</p>
+        </div>
+        <div class="col code"><h4>實作</h4>
+          <p>① 對每束光累加<strong>確定性</strong>力<br><code>a += forceScale · L(δ′) · n</code></p>
+          <p>② 每步加一記<strong>隨機 3D 反衝</strong><br><code>Δv = noiseAmp·√(R<sub>tot</sub>·h)·N(0,1)·d̂</code></p>
+        </div>
+      </div>
+      <p>其中 \(L(\delta') = s/\bigl(1+s+(2\delta'/\Gamma)^2\bigr)\) 正比於散射率 \(R\)。對向光束的 \(L\) 之差自然給出 \(-\beta v\) 阻尼（§4）；隨機項給出 §5 的都普勒極限地板。兩者<strong>各自可調</strong>，於是能同時做到「冷卻夠快」又「地板乾淨可控」。</p>
+      <div class="filechip">physics.js · step() 的雷射段</div>
+      <pre><span class="k">for</span> (<span class="k">let</span> b = 0; b &lt; beams.length; b++) {
+  <span class="k">const</span> n = beams[b];
+  <span class="k">const</span> ndotv = n.nx*ion.vx + n.ny*ion.vy + n.nz*ion.vz;
+  <span class="k">const</span> dEff  = p.detuning - p.dopplerCoef * ndotv;   <span class="c">// δ′ = δ − k·v</span>
+  <span class="k">const</span> x = 2 * dEff / gamma;
+  <span class="k">const</span> L = p.intensity / (1 + p.intensity + x*x);     <span class="c">// ∝ 散射率（勞侖茲）</span>
+  ax += p.forceScale * L * n.nx; ay += ...; az += ...;    <span class="c">// 平均光壓</span>
+  Rtot += L;
+}
+ion.vx += ax*h; ion.vy += ay*h; ion.vz += az*h;
+<span class="k">if</span> (Rtot &gt; 0) {                                          <span class="c">// 反衝擴散（自發輻射）</span>
+  <span class="k">const</span> sigma = p.noiseAmp * <span class="f">Math.sqrt</span>(Rtot * h);
+  <span class="k">const</span> g = boxMullerGaussian(), d = <span class="f">randDir</span>(rng);    <span class="c">// 3D 隨機方向</span>
+  ion.vx += sigma*g*d.x; ion.vy += sigma*g*d.y; ion.vz += sigma*g*d.z;
+}</pre>
+      <div class="note"><b>為什麼這是合理的近似：</b>確定性項就是單光子散射力的<strong>系綜平均（期望值）</strong>；隨機項以正確的 <code>√(R·dt)</code> 標度重現反衝<strong>漲落</strong>。捨去的是單次散射的高頻散粒雜訊，換來數值穩定與可調的極限溫度——對教學/視覺化是划算且忠實的取捨。</div>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section id="coulomb-impl">
+      <h2><span class="n">10</span>庫倫力與數值穩定性</h2>
+      <p>成對庫倫加速度按 \(1/r^2\) 累加。為避免 \(r\to 0\) 的奇異與爆衝，做<strong>軟化（softening）</strong>與<strong>上限（cap）</strong>：</p>
+      <div class="eq"><span class="lbl">(10)</span>
+        \[ \mathbf{a}_i \mathrel{+{=}} C\,\frac{(\mathbf{r}_i-\mathbf{r}_j)}{\bigl(\,|\mathbf{r}_i-\mathbf{r}_j|^2 + \varepsilon^2\,\bigr)^{3/2}} \quad,\quad |\mathbf{a}| \le a_{\max} \]
+      </div>
+      <div class="filechip">physics.js · conservativeAccel()</div>
+      <pre><span class="k">const</span> r2 = dx*dx + dy*dy + dz*dz + soft2;   <span class="c">// + ε² 軟化</span>
+<span class="k">const</span> r  = <span class="f">Math.sqrt</span>(r2);
+<span class="k">let</span> f = p.coulomb / r2;                      <span class="c">// ~1/r²</span>
+<span class="k">if</span> (f &gt; p.coulombFmax) f = p.coulombFmax;     <span class="c">// 上限保險</span>
+ax += f * (dx / r); ay += f * (dy / r); az += f * (dz / r);</pre>
+      <p class="muted">軟化長度 \(\varepsilon\)（<code>softening</code>）也設定了晶體的最小間距尺度；<code>coulomb</code> 與阱剛性 <code>Kx</code> 的比值決定鏈長。\(N\le 14\) 時 \(O(N^2)\) 成對計算成本可忽略。</p>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section id="units">
+      <h2><span class="n">11</span>單位換算：遊戲單位 → 物理量</h2>
+      <p>模擬內部用<strong>任意「遊戲單位」</strong>（像素、幀）。專業版透過<strong>兩個錨點</strong>把它對應到 ¹⁷¹Yb⁺ 369 nm 的真實數字：</p>
+      <table>
+        <tr><th>顯示量</th><th>換算</th><th>依據</th></tr>
+        <tr><td>失諧 δ</td><td><code>δ[MHz] = δ[Γ] × 19.6</code></td><td>Γ/2π = 19.6 MHz（²P<sub>1/2</sub> 線寬）</td></tr>
+        <tr><td>溫度 T</td><td><code>T = T_D · (v<sub>rms</sub>/v<sub>floor</sub>)²</code></td><td>T ∝ ⟨v²⟩，並以 T_D=0.47 mK 為地板錨定</td></tr>
+        <tr><td>飽和參數</td><td><code>s = I/I_sat</code>（即強度滑桿值）</td><td>直接是模擬的 s</td></tr>
+      </table>
+      <div class="filechip">index.html · 溫度讀數（鎖在都普勒極限以上）</div>
+      <pre><span class="k">const</span> GAMMA_MHZ = 19.6, T_D_MK = 0.47, RMS_FLOOR = 8;
+<span class="c">// 速度地板對應 T_D；不可能低於極限：</span>
+<span class="k">const</span> Tmk = T_D_MK * <span class="f">Math.pow</span>(<span class="f">Math.max</span>(rms, RMS_FLOOR) / RMS_FLOOR, 2);</pre>
+      <div class="warn note"><b>誠實聲明：</b>這是<strong>教學性的錨定</strong>，不是第一性原理的 SI 模擬。失諧的 MHz、溫度的 mK 量級正確且自洽，但絕對數值（如鏈長的 µm、阱頻的 MHz）是為了「好看、好玩、可恢復」而調的，並非特定實驗參數。</div>
+    </section>
+
+    <!-- ============ 12 ============ -->
+    <section id="render">
+      <h2><span class="n">12</span>3D 投影與深度排序（無外部函式庫）</h2>
+      <p>渲染完全手刻在 2D canvas 上，不依賴 three.js，維持單檔離線。世界座標先經<strong>攝影機旋轉</strong>（繞 y 軸 yaw、再繞 x 軸 pitch），再做<strong>透視投影</strong>：</p>
+      <div class="eq"><span class="lbl">(11)</span>
+        \[ \text{scale} = \frac{f}{D + z_{\text{cam}}} \quad,\quad (s_x, s_y) = (C + X\cdot\text{scale},\ C + Y\cdot\text{scale}) \]
+      </div>
+      <div class="filechip">index.html · project()</div>
+      <pre><span class="k">function</span> <span class="f">project</span>(x, y, z) {
+  <span class="k">const</span> cy=<span class="f">Math.cos</span>(camYaw), sy=<span class="f">Math.sin</span>(camYaw);
+  <span class="k">let</span> X = x*cy + z*sy, Z = -x*sy + z*cy, Y = y;       <span class="c">// 繞 Y (yaw)</span>
+  <span class="k">const</span> cp=<span class="f">Math.cos</span>(camPitch), sp=<span class="f">Math.sin</span>(camPitch);
+  <span class="k">const</span> Y2 = Y*cp - Z*sp, Z2 = Y*sp + Z*cp;            <span class="c">// 繞 X (pitch)</span>
+  <span class="k">const</span> depth = CAM_DIST + Z2, scale = FOCAL / depth;  <span class="c">// 透視</span>
+  <span class="k">return</span> { sx: C + X*scale, sy: C + Y2*scale, scale, depth };
+}</pre>
+      <p>遮擋用<strong>畫家演算法（painter's algorithm）</strong>：把所有基元（離子球、電極棒段、端蓋環）收進一個陣列，依 depth <strong>由遠到近排序</strong>後依序畫，近的覆蓋遠的。離子的大小、亮度也隨 <code>scale</code> 變化（近大近亮、遠小遠暗＝霧化）。</p>
+      <pre><span class="k">const</span> prims = [];   <span class="c">// {kind:'rod'|'cap'|'ion', depth, ...}</span>
+<span class="c">// ...收集所有基元...</span>
+prims.<span class="f">sort</span>((a,b) =&gt; b.depth - a.depth);            <span class="c">// 遠 → 近</span>
+<span class="k">for</span> (<span class="k">const</span> pr <span class="k">of</span> prims) drawPrim(pr);</pre>
+      <div class="note"><b>電極棒為何切成小段？</b>一根與軸平行的長棒，旋轉後<strong>深度沿長度變化</strong>（一端近、一端遠）。把每根棒切成 ~18 小段、各自帶自己的 depth 一起排序，才能讓離子鏈正確地「擋住遠端、被近端擋住」，得到對的遮擋關係。</div>
+    </section>
+
+    <!-- ============ 13 ============ -->
+    <section id="electrode">
+      <h2><span class="n">13</span>電極與雷射的繪製</h2>
+      <h3>線形 Paul trap 電極</h3>
+      <p>四根電極棒平行於軸（x），位於 (y,z) 平面上 45°/135°/225°/315° 的四極位置；對角一對標為 <span class="pill rf">RF</span>（銅金色），另一對為 <span class="pill gnd">接地</span>（鋼灰色）；兩端各一個 <span class="pill v">DC 端蓋</span>環。棒以漸層描邊 + 高光呈現金屬感，亮度隨深度霧化。</p>
+      <h3>369 nm 雷射</h3>
+      <p>專業版的光束固定畫成 <strong>369 nm 藍紫色</strong>（<code>rgba(168,116,255,…)</code>），用<strong>加色混合（'lighter'）</strong>畫成穿過阱的發光光柱——因為真實雷射不會因為 ~10 MHz 的失諧而改變可見顏色。童趣版才用紅↔藍變色來教「紅失諧冷卻 / 藍失諧加熱」。</p>
+      <h3>離子</h3>
+      <p>球體用徑向漸層（高光偏左上）+ 外圈光暈，顏色由速度映射（HSL：冷=青、熱=紅）。專業版加一點清晰高光（像離子螢光光點）、移除卡通臉；童趣版畫表情、雪花、尾巴。</p>
+    </section>
+
+    <!-- ============ 14 ============ -->
+    <section id="code">
+      <h2><span class="n">14</span>程式結構與測試</h2>
+      <table>
+        <tr><th>檔案</th><th>職責</th></tr>
+        <tr><td><code>physics.js</code></td><td>純物理引擎（瀏覽器 / Node 雙用）：<code>createState</code>、<code>step</code>、<code>conservativeAccel</code>、診斷量 <code>meanKE / temperature / rmsSpeed</code>。所有常數集中在 <code>DEFAULTS</code>。</td></tr>
+        <tr><td><code>index.html</code></td><td>介面 + 3D 渲染 + 主迴圈（固定步長累加器）+ 主題系統（專業/童趣）+ 音效。載入 <code>physics.js</code>。</td></tr>
+        <tr><td><code>test/physics.test.cjs</code></td><td>Node 單元測試：驗證紅失諧冷卻、藍失諧加熱、共振較差、形成線形鏈（離軸 &lt; 18px、不重疊）、極端參數不發散。</td></tr>
+      </table>
+      <p>主迴圈用<strong>固定步長累加器</strong>：不論畫面幀率如何，物理一律以 <code>dt = 1/60 s</code> 推進，確保行為可重現、與顯示解耦。</p>
+      <pre><span class="k">while</span> (acc &gt;= DT &amp;&amp; steps &lt; 6) { Physics.<span class="f">step</span>(state, params, DT); acc -= DT; }</pre>
+      <div class="filechip">physics.js · DEFAULTS（可調常數）</div>
+      <pre>trapKx:1, trapKy:30, trapKz:30   <span class="c">// 阱剛性：弱軸向 + 強徑向 → 線形鏈</span>
+coulomb:300000, softening:12     <span class="c">// 庫倫強度與軟化長度</span>
+gamma:1, dopplerCoef:0.004       <span class="c">// 線寬 Γ 與都普勒靈敏度 k（捕捉速度=γ/k）</span>
+forceScale:260                   <span class="c">// 光壓力尺度 → 冷卻快慢</span>
+noiseAmp:7.5                     <span class="c">// 反衝擴散 → 決定都普勒極限地板</span></pre>
+    </section>
+
+    <!-- ============ 15 ============ -->
+    <section id="real">
+      <h2><span class="n">15</span>對應真實實驗</h2>
+      <table>
+        <tr><th>模擬中的東西</th><th>真實離子阱量子電腦</th></tr>
+        <tr><td>一條離子鏈</td><td>qubit 暫存器（每顆離子 = 一個量子位元）</td></tr>
+        <tr><td>369 nm 雷射冷卻</td><td>¹⁷¹Yb⁺ 的 Doppler 冷卻（²S<sub>1/2</sub>→²P<sub>1/2</sub>）</td></tr>
+        <tr><td>RF / 接地電極棒、DC 端蓋</td><td>線形 Paul trap 的射頻與直流電極</td></tr>
+        <tr><td>冷卻到結晶</td><td>把離子冷到可定址、可做閘的低溫狀態</td></tr>
+        <tr><td>都普勒極限 ~0.47 mK</td><td>之後還要靠<strong>分辨邊帶冷卻</strong>進一步冷到運動基態</td></tr>
+      </table>
+      <p class="muted">模擬聚焦在 Doppler 冷卻與晶體化這一段；真實系統在此之後會用 Raman/邊帶冷卻把聲子數壓到接近 0，並用聚焦雷射對個別離子做單 / 雙量子位元閘。</p>
+    </section>
+
+    <footer>
+      雷射冷卻離子阱模擬 · 物理原理與實作說明　|　搭配 <code>index.html</code>（互動模擬）、<code>physics.js</code>（引擎）、<code>README.md</code> 一起閱讀。<br>
+      模型為教學 / 視覺化用途的簡化：secular 贗位能近似（不含 micromotion）、平均光壓 + 反衝擴散（不含單光子離散散射）、遊戲單位錨定到物理量。
+    </footer>
+  </main>
+</div>
+</body>
+</html>

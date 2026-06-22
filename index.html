@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>❄️ 雷射冷凍離子大作戰</title>
+<style>
+  :root {
+    --bg1:#0b1026; --bg2:#161a3a; --panel:#1d2350; --panel2:#262d63;
+    --ink:#eef2ff; --muted:#9fb0e8; --accent:#5be0ff; --hot:#ff5a5a; --cold:#5bd6ff;
+    --good:#6bff9e; --warn:#ffd45b; --line:#3a4488;
+    --font: "Chalkboard SE","Comic Sans MS","PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;
+  }
+  /* ===== 專業（科研儀器）主題 ===== */
+  body.pro {
+    --bg1:#06090f; --bg2:#0b1119; --panel:#0e1726; --panel2:#0b1320;
+    --ink:#e4ecf6; --muted:#7e8ca6; --accent:#33d6c4; --hot:#ff6f5e; --cold:#56cffb;
+    --good:#33e0a4; --warn:#d8b25e; --line:#203049;
+    --font:"Inter","SF Pro Display",-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;
+  }
+  body.pro h1 { text-shadow:0 0 16px #33d6c433; letter-spacing:2px; font-weight:600; font-size:clamp(19px,3.6vw,28px); }
+  body.pro header p { letter-spacing:.3px; }
+  body.pro .card { box-shadow:0 4px 18px #0007; }
+  body.pro button.act { background:linear-gradient(180deg,#172336,#111b2b); color:var(--ink);
+       border:1px solid var(--line); box-shadow:0 2px 0 #070d16,0 4px 10px #0006; font-weight:600; }
+  body.pro button.act.go   { background:linear-gradient(180deg,#15463f,#0e2f2a); color:#9af0e0; border-color:#2f6f64; box-shadow:0 2px 0 #08201d,0 4px 10px #0006; }
+  body.pro button.act.warm { background:linear-gradient(180deg,#39291f,#25180e); color:#f0c69a; border-color:#6a4e39; box-shadow:0 2px 0 #19100a,0 4px 10px #0006; }
+  body.pro .beam-btn.on { background:linear-gradient(180deg,#2a6b62,#1d534b); border-color:#3f8a7e; box-shadow:0 0 12px #33d6c455; }
+  body.pro .win { border-color:var(--accent); box-shadow:0 0 34px #33d6c444,0 10px 30px #0008; }
+  body.pro .win h2 { color:var(--accent); text-shadow:0 0 18px #33d6c455; }
+  body.pro #detune { filter:saturate(.8); }
+
+  /* 只在專業 / 童趣 主題顯示 */
+  .pro-only { display:none; }
+  body.pro .pro-only { display:block; }
+  .trans-info { font-size:11.5px; color:var(--muted); margin:-2px 0 12px; padding:7px 10px;
+     background:rgba(51,214,196,0.07); border:1px solid var(--line); border-radius:9px; line-height:1.6; }
+  .trans-info sub { font-size:9px; }
+  .rf-readout { font-size:12px; color:var(--muted); line-height:1.75; margin-top:6px;
+     padding:8px 10px; background:rgba(51,214,196,0.06); border:1px solid var(--line); border-radius:9px; }
+  .rf-readout b { color:var(--ink); font-variant-numeric:tabular-nums; }
+  .electrode-legend { position:absolute; left:12px; bottom:10px; font-size:11px; color:var(--muted);
+     background:#0009; border:1px solid var(--line); border-radius:8px; padding:5px 10px; backdrop-filter:blur(3px); }
+  .electrode-legend .dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin:0 5px -1px 0; }
+  .electrode-legend .dot:not(:first-child){ margin-left:12px; }
+  .electrode-legend .dot.rf { background:#d8a45e; }
+  .electrode-legend .dot.gnd { background:#8c9cc0; }
+  .electrode-legend .dot.dc { background:#7fd2c4; border-radius:50%; }
+
+  /* 主題切換鈕 */
+  .theme-switch { display:inline-flex; gap:3px; margin-top:10px; background:rgba(255,255,255,0.05);
+     border:1px solid var(--line); border-radius:999px; padding:3px; }
+  .theme-switch button { border:none; border-radius:999px; padding:5px 16px; cursor:pointer;
+     font-family:var(--font); font-size:12.5px; background:transparent; color:var(--muted); transition:.12s; }
+  .theme-switch button.on { background:var(--accent); color:#06121a; font-weight:700; }
+  .docs-link { display:inline-block; margin:9px 0 0 10px; color:var(--muted); text-decoration:none;
+     font-size:12.5px; border-bottom:1px dotted var(--line); vertical-align:middle; }
+  .docs-link:hover { color:var(--accent); border-color:var(--accent); }
+
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; }
+  body {
+    font-family:var(--font); color:var(--ink);
+    background:radial-gradient(1200px 700px at 50% -10%, #2a316e 0%, var(--bg2) 45%, var(--bg1) 100%);
+    min-height:100%; padding:14px; display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  header { text-align:center; }
+  h1 { margin:0; font-size:clamp(22px,4.5vw,34px); letter-spacing:1px;
+       text-shadow:0 2px 0 #0006, 0 0 18px #5be0ff66; }
+  h1 .sp { color:var(--accent); }
+  header p { margin:4px 0 0; color:var(--muted); font-size:clamp(12px,2.6vw,15px); }
+
+  .layout { display:flex; gap:16px; width:100%; max-width:1100px; align-items:stretch; }
+  @media (max-width:880px){ .layout{ flex-direction:column; align-items:center; } }
+
+  /* ----- Stage (canvas + thermometer) ----- */
+  .stage { position:relative; flex:1 1 auto; min-width:0;
+           display:flex; gap:12px; align-items:stretch; }
+  .canvas-wrap { position:relative; flex:1 1 auto; aspect-ratio:1/1; min-width:0;
+                 border-radius:22px; overflow:hidden;
+                 box-shadow:0 10px 40px #0008, inset 0 0 0 2px #ffffff14; }
+  canvas#trap { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  canvas#trap:active { cursor:grabbing; }
+
+  .banner { position:absolute; left:50%; top:14px; transform:translateX(-50%);
+            background:#0b1026cc; border:1px solid var(--line); color:var(--ink);
+            padding:7px 14px; border-radius:999px; font-size:14px; white-space:nowrap;
+            backdrop-filter:blur(4px); pointer-events:none; max-width:92%; text-align:center; }
+  .win { position:absolute; left:50%; top:23%; transform:translate(-50%,-50%); display:none;
+         flex-direction:column; gap:6px; padding:14px 26px; border-radius:20px;
+         background:#0b1026d0; border:2px solid #6bff9e99;
+         box-shadow:0 0 44px #6bff9e55, 0 10px 30px #0008;
+         text-align:center; pointer-events:none; }
+  .win.show { display:flex; animation:pop .4s ease; }
+  .win h2 { margin:0; font-size:clamp(24px,5vw,40px); color:var(--good);
+            text-shadow:0 0 22px #6bff9e88; }
+  .win p { margin:0; color:var(--ink); font-size:15px; }
+  @keyframes pop { 0%{transform:scale(.6);opacity:0} 100%{transform:scale(1);opacity:1} }
+
+  /* thermometer */
+  .thermo { width:64px; flex:0 0 64px; display:flex; flex-direction:column;
+            align-items:center; gap:6px; }
+  .thermo .tube { position:relative; flex:1 1 auto; width:26px; border-radius:16px;
+                  background:#0d1340;
+                  border:2px solid #ffffff22; overflow:hidden; box-shadow:inset 0 0 10px #0008; }
+  .thermo .fill { position:absolute; left:0; right:0; bottom:0; border-radius:0 0 12px 12px;
+                  background:linear-gradient(#ff5a5a,#ffd45b 45%,#6bff9e 70%,#5bd6ff);
+                  transition:height .15s linear; }
+  .thermo .zone { position:absolute; left:-3px; right:-3px; bottom:0; height:12%;
+                  background:repeating-linear-gradient(45deg,#5bd6ff22,#5bd6ff22 6px,#5bd6ff44 6px,#5bd6ff44 12px);
+                  border-top:2px dashed #5bd6ff99; }
+  .thermo .lab { font-size:18px; }
+  .thermo .num { font-size:12px; color:var(--muted); }
+
+  /* ----- Panel ----- */
+  .panel { flex:0 0 350px; max-width:100%; display:flex; flex-direction:column; gap:12px; }
+  @media (max-width:880px){ .panel{ flex-basis:auto; width:100%; max-width:560px; } }
+  .card { background:linear-gradient(180deg,var(--panel),var(--panel2));
+          border:1px solid var(--line); border-radius:18px; padding:14px; box-shadow:0 6px 20px #0005; }
+  .card h3 { margin:0 0 10px; font-size:15px; color:var(--accent); display:flex; align-items:center; gap:6px; }
+
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .stat { background:#0d1240; border:1px solid var(--line);
+          border-radius:14px; padding:8px 10px; text-align:center; }
+  .stat .v { font-size:20px; font-weight:700; }
+  .stat .k { font-size:11px; color:var(--muted); margin-top:2px; }
+  #stateBadge { transition:color .2s; }
+
+  .row { margin:12px 0; }
+  .row:first-child { margin-top:0; }
+  .row label { display:flex; justify-content:space-between; align-items:center;
+               font-size:13px; margin-bottom:6px; }
+  .row label .val { color:var(--accent); font-variant-numeric:tabular-nums; }
+
+  input[type=range]{ -webkit-appearance:none; width:100%; height:10px; border-radius:6px; outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:24px; height:24px;
+     border-radius:50%; background:#fff; border:3px solid var(--accent); cursor:pointer;
+     box-shadow:0 2px 6px #0007; margin-top:0; }
+  input[type=range]::-moz-range-thumb{ width:22px;height:22px;border-radius:50%;background:#fff;
+     border:3px solid var(--accent);cursor:pointer; }
+
+  /* detuning slider colored track + scale */
+  #detune { background:linear-gradient(90deg,#ff5a5a,#ff8a3d 28%,#7bff8a 50%,#4aa3ff 72%,#9a5bff); }
+  .scale { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:4px; }
+  .scale b { color:var(--good); }
+  #intensity { background:linear-gradient(90deg,#2a2f63,#5be0ff); }
+  #ionCount { background:linear-gradient(90deg,#2a2f63,#ffd45b); }
+
+  .beams { display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+           gap:6px; width:150px; margin:4px auto 0; aspect-ratio:1/1; }
+  .beams .bcell { display:flex; align-items:center; justify-content:center; }
+  .beam-btn { width:100%; height:100%; border-radius:12px; border:1px solid var(--line);
+              background:#0d1240; color:var(--muted); font-size:20px; cursor:pointer;
+              display:flex; align-items:center; justify-content:center; transition:.12s; }
+  .beam-btn.on { background:linear-gradient(180deg,#ff7a5a,#ff5a5a); color:#fff; border-color:#ff9a7a;
+                 box-shadow:0 0 14px #ff5a5a77; }
+  .beam-btn.z-beam { font-size:15px; font-weight:700; }
+  .beams .mid { font-size:22px; }
+
+  .seg { display:flex; gap:6px; }
+  .seg-btn { flex:1 1 0; border:1px solid var(--line); background:#0d1240; color:var(--muted);
+             border-radius:12px; padding:9px 6px; cursor:pointer; font-family:var(--font);
+             font-size:12.5px; transition:.12s; }
+  .seg-btn.on { background:linear-gradient(180deg,#7af0ff,#3cc8ff); color:#0b1026;
+                border-color:#7af0ff; font-weight:700; }
+  body.pro .seg-btn.on { background:var(--accent); border-color:var(--accent); color:#06121a; }
+
+  .btns { display:flex; flex-wrap:wrap; gap:8px; }
+  button.act { flex:1 1 auto; border:none; border-radius:14px; padding:11px 10px; cursor:pointer;
+               font-family:var(--font); font-size:14px; font-weight:700; color:#0b1026;
+               background:linear-gradient(180deg,#7af0ff,#3cc8ff); box-shadow:0 4px 0 #1f6f99, 0 6px 14px #0006;
+               transition:transform .05s, box-shadow .05s; }
+  button.act:active { transform:translateY(3px); box-shadow:0 1px 0 #1f6f99, 0 3px 8px #0006; }
+  button.act.warm { background:linear-gradient(180deg,#ffb15b,#ff7a3d); box-shadow:0 4px 0 #a64f1f,0 6px 14px #0006; }
+  button.act.ghost{ background:linear-gradient(180deg,#414a8f,#313870); color:var(--ink); box-shadow:0 4px 0 #1c2150,0 6px 14px #0006; }
+  button.act.go   { background:linear-gradient(180deg,#7bff9e,#3ce07a); box-shadow:0 4px 0 #1f8f4f,0 6px 14px #0006; }
+
+  #graph { width:100%; height:90px; display:block; border-radius:12px; background:#0b1030; border:1px solid var(--line); }
+  .hint { font-size:13.5px; line-height:1.5; color:var(--ink); min-height:42px; }
+  .hint b { color:var(--warn); }
+
+  .legend { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); margin-top:8px; }
+  .legend .bar { flex:1 1 auto; height:8px; border-radius:5px;
+                 background:linear-gradient(90deg,#5bd6ff,#7bff8a,#ffd45b,#ff5a5a); }
+
+  /* help modal */
+  .help-btn { background:#0d1240; border:1px solid var(--line); color:var(--ink); border-radius:999px;
+              padding:6px 14px; cursor:pointer; font-family:var(--font); font-size:13px; margin-top:8px; }
+  .modal { position:fixed; inset:0; background:#06091ccc; display:none; align-items:center;
+           justify-content:center; padding:18px; z-index:50; }
+  .modal.show { display:flex; }
+  .modal .box { background:linear-gradient(180deg,#1d2350,#161b3d);
+                border:1px solid var(--line); border-radius:20px; max-width:560px; width:100%;
+                max-height:86vh; overflow:auto; padding:22px; }
+  .modal h2 { margin:0 0 10px; color:var(--accent); }
+  .modal h4 { margin:16px 0 4px; color:var(--good); }
+  .modal p, .modal li { font-size:14.5px; line-height:1.65; color:var(--ink); }
+  .modal .close { float:right; cursor:pointer; background:#0d1240; border:1px solid var(--line);
+                  color:#fff; border-radius:10px; padding:4px 12px; }
+  .foot { color:var(--muted); font-size:11.5px; text-align:center; margin-top:2px; }
+  .pill { display:inline-block; background:#0d1240; border:1px solid var(--line); border-radius:999px;
+          padding:1px 8px; font-size:12px; }
+</style>
+</head>
+<body class="pro">
+  <header>
+    <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
+    <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
+    <div class="theme-switch">
+      <button data-theme="pro" class="on">專業</button>
+      <button data-theme="kids">童趣</button>
+    </div>
+    <a class="docs-link" href="physics-and-implementation.html" target="_blank" rel="noopener">📄 物理原理與實作說明</a>
+  </header>
+
+  <div class="layout">
+    <!-- ===== Stage ===== -->
+    <div class="stage">
+      <div class="canvas-wrap">
+        <canvas id="trap"></canvas>
+        <div class="banner" id="banner">把雷射顏色調到「最佳冷卻」，看看離子會怎樣？</div>
+        <div class="win" id="win">
+          <h2 id="winTitle">已形成庫倫晶體</h2>
+          <p id="winText">離子已冷卻結晶。</p>
+        </div>
+        <div class="electrode-legend pro-only"><span class="dot rf"></span>RF 電極<span class="dot gnd"></span>接地<span class="dot dc"></span>DC 端蓋</div>
+      </div>
+      <div class="thermo">
+        <div class="lab">🔥</div>
+        <div class="tube"><div class="zone"></div><div class="fill" id="thermoFill" style="height:60%"></div></div>
+        <div class="lab">❄️</div>
+        <div class="num" id="thermoNum">--</div>
+      </div>
+    </div>
+
+    <!-- ===== Panel ===== -->
+    <div class="panel">
+      <div class="card">
+        <div class="stats">
+          <div class="stat"><div class="v" id="tempVal">--</div><div class="k" id="tempK">溫度 T</div></div>
+          <div class="stat"><div class="v" id="stateBadge">氣態</div><div class="k">離子狀態</div></div>
+          <div class="stat"><div class="v" id="speedVal">--</div><div class="k" id="speedK">v_rms</div></div>
+          <div class="stat"><div class="v" id="timeVal">--</div><div class="k">冷卻用時 / 最佳</div></div>
+        </div>
+        <div class="legend"><span>慢·冷</span><div class="bar"></div><span>快·熱</span></div>
+      </div>
+
+      <div class="card">
+        <h3 id="paramTitle">雷射參數 · ¹⁷¹Yb⁺ 369 nm</h3>
+        <div class="trans-info pro-only">¹⁷¹Yb⁺　²S₁/₂ → ²P₁/₂　λ = 369.5 nm　Γ/2π = 19.6 MHz　T<sub>D</sub> ≈ 0.47 mK</div>
+        <div class="row">
+          <label><span id="detuneName">失諧 δ</span><span class="val" id="detuneLab">—</span></label>
+          <input type="range" id="detune" min="-2.5" max="2.5" step="0.05" value="-0.5" />
+          <div class="scale" id="detuneScale"><span>−Γ</span><b>−Γ/2 最佳</b><span>0 共振</span><span>+Γ 加熱</span></div>
+        </div>
+        <div class="row">
+          <label><span id="intensityName">飽和參數 s</span><span class="val" id="intensityLab">—</span></label>
+          <input type="range" id="intensity" min="0" max="8" step="0.1" value="1.5" />
+        </div>
+        <div class="row">
+          <label>離子數量 <span class="val" id="ionCountLab">6 顆</span></label>
+          <input type="range" id="ionCount" min="1" max="14" step="1" value="6" />
+        </div>
+        <div class="row">
+          <label>雷射方向（點一點開關）<span class="val" id="beamLab">6 道</span></label>
+          <div class="beams">
+            <div class="bcell"><button class="beam-btn on z-beam" data-beam="F" title="前方雷射（z 軸）">前</button></div>
+            <div class="bcell"><button class="beam-btn on" data-beam="U" title="上方雷射">⬇️</button></div>
+            <div class="bcell"></div>
+            <div class="bcell"><button class="beam-btn on" data-beam="L" title="左方雷射">➡️</button></div>
+            <div class="bcell mid">⚛️</div>
+            <div class="bcell"><button class="beam-btn on" data-beam="R" title="右方雷射">⬅️</button></div>
+            <div class="bcell"></div>
+            <div class="bcell"><button class="beam-btn on" data-beam="D" title="下方雷射">⬆️</button></div>
+            <div class="bcell"><button class="beam-btn on z-beam" data-beam="B" title="後方雷射（z 軸）">後</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pro-only" id="rfCard">
+        <h3 id="rfTitle">阱模型 · micromotion</h3>
+        <div class="trans-info pro-only">線形 Paul trap：贗位能＝RF 時間平均（快、無 micromotion）；真實 RF＝顯式積分時變四極場（會看到 micromotion）。</div>
+        <div class="row">
+          <label>阱模型 <span class="val" id="trapModelLab">贗位能</span></label>
+          <div class="seg">
+            <button class="seg-btn on" data-trap="secular">贗位能 (secular)</button>
+            <button class="seg-btn" data-trap="rf">真實 RF</button>
+          </div>
+        </div>
+        <div id="rfControls" style="display:none">
+          <div class="row">
+            <label>RF 頻率 Ω/2π <span class="val" id="rfFreqLab">20.0 MHz</span></label>
+            <input type="range" id="rfOmega" min="24" max="90" step="1" value="39" />
+          </div>
+          <div class="row">
+            <label>RF 電壓 V_RF <span class="val" id="rfAmpLab">305</span></label>
+            <input type="range" id="rfAmp" min="120" max="520" step="5" value="305" />
+          </div>
+          <div class="row">
+            <label>DC 端蓋電壓 U_DC（軸向）<span class="val" id="dcLab">1.0</span></label>
+            <input type="range" id="dcVolt" min="0.3" max="4" step="0.1" value="1" />
+          </div>
+          <div class="row">
+            <label>雜散 DC 場（excess micromotion）<span class="val" id="strayLab">0</span></label>
+            <input type="range" id="strayField" min="0" max="1400" step="20" value="0" />
+          </div>
+          <div class="rf-readout" id="secularReadout">secular 頻率 …</div>
+          <div class="legend" style="margin-top:6px"><span class="pill" id="microReadout">離軸 0.0 px · micromotion：無</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🕹️ 控制</h3>
+        <div class="btns">
+          <button class="act go" id="bestBtn">✨ 最佳設定</button>
+          <button class="act warm" id="heatBtn">🔥 加熱搖一搖</button>
+          <button class="act ghost" id="rotateBtn" title="自動旋轉視角">⏸️ 旋轉：關</button>
+          <button class="act ghost" id="pauseBtn">⏸️ 暫停</button>
+          <button class="act ghost" id="resetBtn">🔄 重來</button>
+          <button class="act ghost" id="muteBtn" title="音效">🔊</button>
+        </div>
+        <div class="legend" style="margin-top:10px"><span class="pill">💡 拖曳畫面可 360° 旋轉看立體；輕點一下離子可以戳它一下 👆</span></div>
+      </div>
+
+      <div class="card">
+        <h3>📈 溫度變化</h3>
+        <canvas id="graph"></canvas>
+        <div class="hint" id="hint" style="margin-top:8px">調調看上面的滑桿，觀察溫度怎麼變～</div>
+        <button class="help-btn" id="helpBtn">❓ 為什麼雷射可以讓離子變冷？</button>
+      </div>
+    </div>
+  </div>
+  <div class="foot">離子阱 × 都普勒雷射冷卻 · 國小科普互動遊戲</div>
+
+  <!-- Help modal -->
+  <div class="modal" id="help">
+    <div class="box">
+      <span class="close" id="helpClose">關閉 ✕</span>
+      <h2>🔦 雷射怎麼讓離子「變冷」？</h2>
+      <p><b>溫度</b>其實就是<b>晃動的快慢</b>。離子跑得越快＝越熱；幾乎停下來＝超冷！我們的目標就是讓離子慢下來。</p>
+
+      <h4>① 光也會「推」東西</h4>
+      <p>雷射打到離子，會像很多顆小球一樣推它一下。方向對的話，就能把離子推到慢下來。</p>
+
+      <h4>② 聰明的紅色雷射（都普勒效應）</h4>
+      <p>我們把雷射調得比離子「喜歡的顏色」<b>紅一點點</b>。這樣有個神奇的規則：<br>
+      👉 只有<b>迎面衝過來</b>的離子，才會「看到」剛好對的顏色而被打到，於是被推回去、慢下來；<br>
+      👉 背對著跑走的離子，看到的顏色不對，就不太會被打到。</p>
+      <p>結果不管離子往哪跑，<b>迎面的那道雷射總會把它推慢</b> → 越來越冷！這就是<b>都普勒雷射冷卻</b>。</p>
+
+      <h4>③ 為什麼需要好幾道雷射？</h4>
+      <p>離子會上下左右亂跑，所以要從<b>不同方向</b>都放雷射，才能把每個方向的晃動都停下來。試試看只開一邊，會發生什麼事？</p>
+
+      <h4>④ 太藍會怎樣？</h4>
+      <p>如果雷射調得太藍（比喜歡的顏色高），規則會<b>反過來</b>——離子反而被越推越快、越來越熱 🔥。試試看！</p>
+
+      <h4>⑤ 冷到最後：離子晶體 💎</h4>
+      <p>離子都帶正電會互相排斥。當它們夠冷、不再亂跑，就會乖乖排成漂亮又規律的圖案，叫做<b>離子晶體</b>。真正的科學家就是這樣把離子排好來做<b>量子電腦</b>的喔！</p>
+
+      <h4>⑥ 立體的線形離子阱 ➖</h4>
+      <p>畫面裡那 <b>4 根金屬棒</b>就是真實的「<b>線形 Paul trap</b>」電極，兩端還有端蓋電極。它們合力把離子<b>上下、前後都夾很緊、只有左右很鬆</b>，所以離子冷卻後只能乖乖排成<b>一條橫線</b>，懸浮在 4 根電極的正中央。<br>
+      這正是真實量子電腦裡離子的樣子！每顆離子就是一個<b>量子位元 (qubit)</b>。仔細看：中間的離子<b>擠得比較近</b>、兩端<b>比較鬆</b>——和真實的離子鏈一模一樣。<b>用滑鼠拖曳畫面</b>可以 360° 轉動,看看它真的是立體的喔！</p>
+
+      <h4>⑦ 沒辦法完全靜止？</h4>
+      <p>離子吐出光的時候也會被反衝一下下，所以永遠會有一點點抖動，沒辦法到絕對零度。這個最低溫叫做<b>都普勒極限</b>。</p>
+    </div>
+  </div>
+
+<script src="physics.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  // ---------- 畫布設定 ----------
+  const LOGICAL = 600;                 // 邏輯解析度
+  const C = LOGICAL / 2;               // 中心
+  const TRAP_R = Physics.DEFAULTS.worldRadius; // 280
+  const canvas = $('trap');
+  const ctx = canvas.getContext('2d');
+  const gcanvas = $('graph');
+  const gctx = gcanvas.getContext('2d');
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function fit() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    const gw = gcanvas.clientWidth, gh = gcanvas.clientHeight;
+    gcanvas.width = Math.round(gw * dpr); gcanvas.height = Math.round(gh * dpr);
+  }
+  window.addEventListener('resize', fit);
+
+  // ---------- 模擬狀態 ----------
+  // 六道光束：左右(±x 軸向)、上下(±y)、前後(±z)
+  const beamsOn = { L:true, R:true, U:true, D:true, F:true, B:true };
+  const BEAM_VEC = {
+    L:{nx:1,ny:0,nz:0}, R:{nx:-1,ny:0,nz:0},
+    U:{nx:0,ny:1,nz:0}, D:{nx:0,ny:-1,nz:0},
+    F:{nx:0,ny:0,nz:1}, B:{nx:0,ny:0,nz:-1},
+  };
+  // 線形阱（trapKx 弱、trapKy/Kz 強，已是 physics.js 預設）→ 離子排成立體線形離子鏈
+  const params = Physics.makeParams({ detuning:-0.5, intensity:1.5 });
+  let state = Physics.createState(6, { initialSpeed:120 });
+  let running = true;
+  let muted = false;
+  let theme = 'pro';   // 'pro'（科研儀器風）| 'kids'（童趣風）
+
+  // ¹⁷¹Yb⁺ 369 nm 冷卻躍遷的真實數據（用來把遊戲單位換算成物理單位）
+  const GAMMA_MHZ = 19.6;   // ²P₁/₂ 自然線寬 Γ/2π
+  const T_D_MK = 0.47;      // 都普勒極限 T_D = ħΓ/2k_B
+  const RMS_FLOOR = 8;      // 模擬中對應 T_D 的速度地板 (px/s)
+
+  // 主題：切換文字（顏色/字體由 CSS 的 body.pro 處理）
+  const TXT = {
+    title:{ pro:'雷射冷卻 · 線形離子阱<span class="sp">模擬器</span>', kids:'❄️ 雷射冷凍離子<span class="sp">大作戰</span> 🔦' },
+    sub:{ pro:'¹⁷¹Yb⁺ 369 nm Doppler 雷射冷卻 × 線形 Paul trap：調失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉）',
+          kids:'在立體離子阱裡用雷射把離子「凍」起來，排成一條離子鏈！（拖曳畫面可 360° 旋轉看立體）' },
+    win:{ pro:'已形成庫倫晶體', kids:'🎉 結晶成功！' },
+    paramTitle:{ pro:'雷射參數 · ¹⁷¹Yb⁺ 369 nm', kids:'🎛️ 調整雷射參數' },
+    detuneName:{ pro:'失諧 δ', kids:'雷射顏色（失諧）' },
+    intensityName:{ pro:'飽和參數 s = I/I_sat', kids:'雷射強度' },
+    tempK:{ pro:'溫度 T', kids:'熱度' },
+    speedK:{ pro:'v_rms', kids:'平均速度' },
+    scale:{ pro:'<span>−Γ</span><b>−Γ/2 最佳</b><span>0 共振</span><span>+Γ 加熱</span>',
+            kids:'<span>🔴 太紅</span><b>❄️ 最佳</b><span>🟢 對準</span><span>🔵 太藍 🔥</span>' },
+  };
+  function applyTheme(t) {
+    theme = t;
+    document.body.classList.toggle('pro', t === 'pro');
+    document.querySelector('h1').innerHTML = TXT.title[t];
+    document.querySelector('header p').textContent = TXT.sub[t];
+    $('winTitle').textContent = TXT.win[t];
+    $('paramTitle').textContent = TXT.paramTitle[t];
+    $('detuneName').textContent = TXT.detuneName[t];
+    $('intensityName').textContent = TXT.intensityName[t];
+    $('tempK').textContent = TXT.tempK[t];
+    $('speedK').textContent = TXT.speedK[t];
+    $('detuneScale').innerHTML = TXT.scale[t];
+    document.querySelectorAll('.theme-switch button').forEach(b => b.classList.toggle('on', b.dataset.theme === t));
+    if (t === 'kids' && params.trapModel === 'rf') setTrapModel('secular');   // RF 為專業版專屬
+    syncLabels();
+  }
+  document.querySelectorAll('.theme-switch button').forEach(b => {
+    b.addEventListener('click', () => { ensureAudio(); applyTheme(b.dataset.theme); blip(b.dataset.theme === 'pro' ? 520 : 740, 0.05); });
+  });
+
+  // ---------- 3D 攝影機（可拖曳旋轉、自動旋轉）----------
+  let camYaw = 0.7, camPitch = -0.34, autoRotate = false;
+  const CAM_DIST = 820, FOCAL = 820;
+  function project(x, y, z) {
+    const cy = Math.cos(camYaw), sy = Math.sin(camYaw);
+    let X = x * cy + z * sy, Z = -x * sy + z * cy, Y = y;        // 繞 Y 軸(yaw)
+    const cp = Math.cos(camPitch), sp = Math.sin(camPitch);
+    const Y2 = Y * cp - Z * sp, Z2 = Y * sp + Z * cp;            // 繞 X 軸(pitch)
+    const depth = CAM_DIST + Z2;
+    const scale = FOCAL / depth;
+    return { sx: C + X * scale, sy: C + Y2 * scale, scale, depth };
+  }
+
+  // 溫度圖與計時
+  let tempHist = [];          // {t, T}
+  let simClock = 0;           // 累積模擬時間（秒）
+  let coolStart = 0;          // 本回合開始冷卻的時間
+  let bestTime = null;        // 最佳冷卻紀錄
+  let coldTimer = 0;          // 連續夠冷的時間
+  let won = false;
+
+  function rebuildBeams() {
+    params.beams = Object.keys(beamsOn).filter(k => beamsOn[k]).map(k => BEAM_VEC[k]);
+  }
+  rebuildBeams();
+
+  function resetIons(n) {
+    state = Physics.createState(n, { initialSpeed:120 });
+    tempHist = []; simClock = 0; coolStart = 0; coldTimer = 0; won = false;
+    $('win').classList.remove('show');
+  }
+
+  function heat() {
+    for (const ion of state.ions) {
+      const d = Physics.randDir(Math.random), sp = 120 + Math.random()*120;
+      ion.vx += d.x*sp; ion.vy += d.y*sp; ion.vz += d.z*sp;
+    }
+    coolStart = simClock; coldTimer = 0; won = false;
+    $('win').classList.remove('show');
+    blip(220, 0.05);
+  }
+
+  // 滑鼠/手指：拖曳 → 旋轉視角；輕點 → 戳一下最近的離子（加熱）
+  let pointerDown = false, dragMoved = false, lastX = 0, lastY = 0;
+  canvas.addEventListener('pointerdown', e => {
+    ensureAudio(); pointerDown = true; dragMoved = false;
+    lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!pointerDown) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    if (Math.abs(dx) + Math.abs(dy) > 4) dragMoved = true;
+    camYaw += dx * 0.01;
+    camPitch = Math.max(-1.45, Math.min(1.45, camPitch + dy * 0.01));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  canvas.addEventListener('pointerup', e => { pointerDown = false; if (!dragMoved) pokeAt(e); });
+  canvas.addEventListener('pointercancel', () => { pointerDown = false; });
+  function pokeAt(ev) {
+    const r = canvas.getBoundingClientRect();
+    const px = (ev.clientX - r.left) / r.width * LOGICAL, py = (ev.clientY - r.top) / r.height * LOGICAL;
+    let best = -1, bd = 1e9;
+    for (let i = 0; i < state.ions.length; i++) {
+      const o = state.ions[i], p = project(o.x, o.y, o.z);
+      const d = (p.sx - px) ** 2 + (p.sy - py) ** 2;
+      if (d < bd) { bd = d; best = i; }
+    }
+    if (best >= 0 && bd < 70 * 70) {
+      const ion = state.ions[best], d = Physics.randDir(Math.random), sp = 230;
+      ion.vx += d.x*sp; ion.vy += d.y*sp; ion.vz += d.z*sp;
+      coolStart = simClock; coldTimer = 0; won = false; $('win').classList.remove('show');
+      blip(330, 0.05);
+    }
+  }
+
+  // ---------- 控制項 ----------
+  const detune = $('detune'), intensity = $('intensity'), ionCount = $('ionCount');
+
+  function detuneZone(d) {
+    if (d > 0.15)  return { t:'🔵 太藍（加熱！）', c:'#ff8a8a' };
+    if (d >= -0.15) return { t:'🟢 剛好對準', c:'#ffd45b' };
+    if (d >= -1.0) return { t:'❄️ 最佳冷卻', c:'#6bff9e' };
+    return { t:'🔴 太紅（偏弱）', c:'#ff9a7a' };
+  }
+  function syncLabels() {
+    const z = detuneZone(params.detuning), s = params.intensity;
+    if (theme === 'pro') {
+      const dG = params.detuning, dM = dG * GAMMA_MHZ, sgn = v => (v >= 0 ? '+' : '');
+      $('detuneLab').textContent = `${sgn(dM)}${dM.toFixed(1)} MHz · ${sgn(dG)}${dG.toFixed(2)} Γ`;
+      $('intensityLab').textContent = `s = ${s.toFixed(1)}`;
+    } else {
+      $('detuneLab').textContent = z.t;
+      $('intensityLab').textContent = s === 0 ? '關閉' : s < 1 ? '弱' : s < 3 ? '中' : '強';
+    }
+    $('detuneLab').style.color = z.c;
+    $('ionCountLab').textContent = ionCount.value + ' 顆';
+    const n = params.beams.length;
+    $('beamLab').textContent = n === 0 ? '全關' : n + ' 道';
+  }
+  detune.addEventListener('input', () => { params.detuning = parseFloat(detune.value); syncLabels(); });
+  intensity.addEventListener('input', () => { params.intensity = parseFloat(intensity.value); syncLabels(); });
+  ionCount.addEventListener('input', () => { resetIons(parseInt(ionCount.value,10)); syncLabels(); });
+
+  document.querySelectorAll('.beam-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.beam; beamsOn[k] = !beamsOn[k];
+      btn.classList.toggle('on', beamsOn[k]); rebuildBeams(); syncLabels();
+      ensureAudio(); blip(beamsOn[k] ? 880 : 440, 0.05);
+    });
+  });
+
+  // 阱模型：贗位能 (secular) vs 真實 RF（micromotion）
+  function setTrapModel(model) {
+    params.trapModel = model;
+    $('trapModelLab').textContent = model === 'rf' ? '真實 RF' : '贗位能';
+    $('rfControls').style.display = model === 'rf' ? 'block' : 'none';
+    document.querySelectorAll('[data-trap]').forEach(b => b.classList.toggle('on', b.dataset.trap === model));
+    if (model === 'rf') updateRfReadout();
+  }
+  // 遊戲角頻率 → MHz 的錨定（絕對尺度是選定的，比值與 (a,q) 為精確）
+  const FREQ_MHZ = 0.513;   // 預設 Ω=39 → 20 MHz
+  function updateRfReadout() {
+    const f = Physics.secularFreqs(params);
+    $('rfFreqLab').textContent = (f.Omega * FREQ_MHZ).toFixed(1) + ' MHz';
+    $('rfAmpLab').textContent = Math.round(params.rfAmp);
+    $('dcLab').textContent = params.trapKx.toFixed(1);
+    const ok = f.stable
+      ? '<span style="color:var(--good)">✓ 穩定</span>'
+      : '<span style="color:var(--hot)">✕ 不穩定（離子流失）</span>';
+    $('secularReadout').innerHTML =
+      `secular 頻率　徑向 ω_r/2π = <b>${(f.wr * FREQ_MHZ).toFixed(2)}</b> MHz　軸向 ω_z/2π = <b>${(f.wz * FREQ_MHZ).toFixed(2)}</b> MHz<br>` +
+      `Mathieu　q = <b>${f.q.toFixed(2)}</b>　a = <b>${f.a.toFixed(3)}</b>　${ok}`;
+  }
+  document.querySelectorAll('[data-trap]').forEach(btn => {
+    btn.addEventListener('click', () => { ensureAudio(); setTrapModel(btn.dataset.trap); blip(btn.dataset.trap === 'rf' ? 300 : 520, 0.05); });
+  });
+  $('rfOmega').addEventListener('input', e => { params.rfOmega = parseFloat(e.target.value); updateRfReadout(); });
+  $('rfAmp').addEventListener('input', e => { params.rfAmp = parseFloat(e.target.value); updateRfReadout(); });
+  $('dcVolt').addEventListener('input', e => { params.trapKx = parseFloat(e.target.value); updateRfReadout(); });
+  $('strayField').addEventListener('input', e => { params.strayField = parseFloat(e.target.value); $('strayLab').textContent = Math.round(params.strayField); });
+
+  $('bestBtn').addEventListener('click', () => {
+    detune.value = -0.5; params.detuning = -0.5;
+    intensity.value = 1.5; params.intensity = 1.5;
+    Object.keys(beamsOn).forEach(k => beamsOn[k] = true);
+    document.querySelectorAll('.beam-btn').forEach(b => b.classList.add('on'));
+    rebuildBeams(); syncLabels(); ensureAudio(); blip(660,0.06);
+  });
+  $('heatBtn').addEventListener('click', () => { ensureAudio(); heat(); });
+  $('resetBtn').addEventListener('click', () => { ensureAudio(); resetIons(parseInt(ionCount.value,10)); blip(523,0.06); });
+  $('pauseBtn').addEventListener('click', () => {
+    ensureAudio();
+    running = !running; $('pauseBtn').textContent = running ? '⏸️ 暫停' : '▶️ 繼續';
+    blip(running ? 392 : 294, 0.05);
+  });
+  $('muteBtn').addEventListener('click', () => {
+    muted = !muted; $('muteBtn').textContent = muted ? '🔇' : '🔊';
+    if (!muted) { ensureAudio(); blip(660,0.06); }   // 取消靜音時播一聲確認
+  });
+  $('rotateBtn').addEventListener('click', () => {
+    ensureAudio(); autoRotate = !autoRotate;
+    $('rotateBtn').textContent = autoRotate ? '🌀 旋轉：開' : '⏸️ 旋轉：關';
+    blip(autoRotate ? 660 : 440, 0.05);
+  });
+  $('helpBtn').addEventListener('click', () => $('help').classList.add('show'));
+  $('helpClose').addEventListener('click', () => $('help').classList.remove('show'));
+  $('help').addEventListener('click', e => { if (e.target === $('help')) $('help').classList.remove('show'); });
+
+  // ---------- 音效（WebAudio，極簡）----------
+  let actx = null;
+  function ensureAudio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(actx && actx.state==='suspended') actx.resume(); }
+  function blip(freq, dur){ if(muted||!actx) return; try{
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type='sine'; o.frequency.value=freq; o.connect(g); g.connect(actx.destination);
+    g.gain.setValueAtTime(0.0001, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.18, actx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime+dur);
+    o.start(); o.stop(actx.currentTime+dur+0.02);
+  }catch(e){} }
+  function winChime(){ if(muted||!actx) return; [523,659,784,1047].forEach((f,i)=> setTimeout(()=>blip(f,0.25), i*110)); }
+  // 瀏覽器規定：要先有「使用者互動」才能播音效。第一次點擊/按鍵就解鎖。
+  function unlockAudio(){ ensureAudio(); window.removeEventListener('pointerdown',unlockAudio); window.removeEventListener('keydown',unlockAudio); }
+  window.addEventListener('pointerdown', unlockAudio);
+  window.addEventListener('keydown', unlockAudio);
+
+  // ---------- 顏色 ----------
+  function ionColor(speed, alpha) {
+    const t = Math.max(0, Math.min(1, speed/170));
+    const hue = 200 * (1 - t);            // 200=cyan(冷) → 0=red(熱)
+    return `hsla(${hue},90%,${58 - t*6}%,${alpha==null?1:alpha})`;
+  }
+  function beamColor(d, alpha) {
+    // 紅失諧→暖紅；對準→綠；藍失諧→藍紫
+    let hue;
+    if (d < 0) hue = 0 + (d + 2.5) / 2.5 * 90 * 0.55;   // -2.5→0(紅) .. 0→~55(黃綠)
+    else       hue = 120 + (d / 2.5) * 150;             // 0→120(綠) .. 2.5→270(藍紫)
+    if (d >= -0.15 && d <= 0.15) hue = 120;
+    return `hsla(${hue},95%,60%,${alpha})`;
+  }
+  // 369 nm 近紫外 → 藍紫色（專業版固定用這個雷射顏色）
+  function beamColor369(alpha) { return `rgba(168,116,255,${alpha})`; }
+
+  // ---------- 3D 渲染 ----------
+  const ION_R = 15;
+  const ROD_LEN = 250, ROD_R = 92, ROD_W = 18, ROD_SEG = 18;   // 4 根電極棒
+  const CAP_X = 266, CAP_R = 120, RING_SEG = 30;               // 2 個端蓋環
+  const ROD_ANG = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4];
+  const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+  // 深度→亮度（近亮遠暗）
+  const fogB = depth => clamp(0.5 + 0.62 * (CAM_DIST + 250 - depth) / 500, 0.45, 1.18);
+
+  function render() {
+    const W = canvas.width, H = canvas.height;
+    ctx.save();
+    ctx.scale(W / LOGICAL, H / LOGICAL);
+    ctx.clearRect(0,0,LOGICAL,LOGICAL);
+    // 背景（專業：更深、更冷；童趣：偏藍紫）
+    const pro = theme === 'pro';
+    const bg = ctx.createRadialGradient(C,C,40,C,C,C*1.15);
+    bg.addColorStop(0, pro ? '#0a121c' : '#161d4a'); bg.addColorStop(1, pro ? '#04060b' : '#080b1c');
+    ctx.fillStyle = bg; ctx.fillRect(0,0,LOGICAL,LOGICAL);
+
+    // 雷射光束（加色發光，畫在最底）
+    drawBeams3D();
+
+    // 收集所有立體基元（電極棒段 + 端蓋 + 離子），依深度排序後由遠到近畫
+    const prims = [];
+    ROD_ANG.forEach((a, ri) => {
+      const ay = ROD_R*Math.cos(a), az = ROD_R*Math.sin(a), rf = (ri % 2 === 0);   // 對角一對為 RF
+      let prev = null;
+      for (let i=0;i<=ROD_SEG;i++) {
+        const x = -ROD_LEN + (2*ROD_LEN)*i/ROD_SEG, p = project(x, ay, az);
+        if (prev) prims.push({ kind:'rod', depth:(p.depth+prev.depth)/2, p0:prev, p1:p, scale:(p.scale+prev.scale)/2, rf });
+        prev = p;
+      }
+    });
+    for (const cx of [-CAP_X, CAP_X]) {
+      const pts = [];
+      for (let i=0;i<RING_SEG;i++){ const th = 2*Math.PI*i/RING_SEG; pts.push(project(cx, CAP_R*Math.cos(th), CAP_R*Math.sin(th))); }
+      prims.push({ kind:'cap', depth:project(cx,0,0).depth, pts });
+    }
+    for (const ion of state.ions) { const p = project(ion.x, ion.y, ion.z); prims.push({ kind:'ion', depth:p.depth, sx:p.sx, sy:p.sy, scale:p.scale, ion }); }
+    prims.sort((a,b)=> b.depth - a.depth);
+    for (const pr of prims) { if (pr.kind==='rod') drawRod(pr); else if (pr.kind==='cap') drawCap(pr); else drawIon3D(pr); }
+
+    // 冷卻時的晶體連線（淡淡畫在上面）
+    const rms = Physics.rmsSpeed(state);
+    if (rms < 30 && state.ions.length > 1) drawCrystalLinks3D(rms);
+
+    drawConfetti();
+    ctx.restore();
+  }
+
+  function drawBeams3D() {
+    if (params.intensity <= 0) return;
+    const d = params.detuning, a = Math.min(0.42, 0.10 + params.intensity*0.045);
+    // 專業：369 nm 固定藍紫色；童趣：依失諧變色（紅↔藍）
+    const col = theme === 'pro' ? (aa => beamColor369(aa)) : (aa => beamColor(d, aa));
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    for (const k of Object.keys(beamsOn)) {
+      if (!beamsOn[k]) continue;
+      const n = BEAM_VEC[k];
+      const s = project(-n.nx*300, -n.ny*300, -n.nz*300);   // 光源端
+      const e = project(n.nx*230, n.ny*230, n.nz*230);      // 對側
+      const g = ctx.createLinearGradient(s.sx,s.sy,e.sx,e.sy);
+      g.addColorStop(0, col(a)); g.addColorStop(0.55, col(a*0.4)); g.addColorStop(1, col(0));
+      ctx.strokeStyle = g; ctx.lineWidth = Math.max(5, 24*s.scale);
+      ctx.beginPath(); ctx.moveTo(s.sx,s.sy); ctx.lineTo(e.sx,e.sy); ctx.stroke();
+      ctx.fillStyle = col(0.85);
+      ctx.beginPath(); ctx.arc(s.sx, s.sy, Math.max(4,7*s.scale), 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawRod(pr) {
+    let fb = fogB(pr.depth); const w = Math.max(2, ROD_W*pr.scale);
+    ctx.lineCap = 'round';
+    // 專業：RF 電極=銅金、接地電極=鋼；童趣：統一金屬（穩定顯示，不閃爍）
+    let r = 140, g = 156, b = 196;
+    if (theme === 'pro' && pr.rf) { r = 216; g = 164; b = 94; }
+    ctx.strokeStyle = `rgba(${Math.min(255,r*fb)|0},${Math.min(255,g*fb)|0},${Math.min(255,b*fb)|0},0.96)`;
+    ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(pr.p0.sx,pr.p0.sy); ctx.lineTo(pr.p1.sx,pr.p1.sy); ctx.stroke();
+    ctx.strokeStyle = `rgba(${220*fb|0},${235*fb|0},255,0.45)`;   // 金屬高光
+    ctx.lineWidth = Math.max(1, w*0.36);
+    ctx.beginPath(); ctx.moveTo(pr.p0.sx, pr.p0.sy - w*0.2); ctx.lineTo(pr.p1.sx, pr.p1.sy - w*0.2); ctx.stroke();
+  }
+
+  function drawCap(pr) {
+    const fb = fogB(pr.depth);
+    ctx.beginPath(); pr.pts.forEach((p,i)=> i ? ctx.lineTo(p.sx,p.sy) : ctx.moveTo(p.sx,p.sy)); ctx.closePath();
+    ctx.fillStyle = 'rgba(90,110,160,0.07)'; ctx.fill();
+    ctx.lineWidth = Math.max(1.5, 5*(FOCAL/pr.depth));
+    ctx.strokeStyle = `rgba(${130*fb|0},${150*fb|0},${190*fb|0},0.75)`; ctx.stroke();
+  }
+
+  function drawIon3D(pr) {
+    const ion = pr.ion, sc = pr.scale, R = ION_R*sc, sx = pr.sx, sy = pr.sy;
+    const sp = Math.hypot(ion.vx, ion.vy, ion.vz), t = clamp(sp/170, 0, 1);
+    // 螢幕上的速度方向（投影）
+    const pa = project(ion.x+ion.vx*0.05, ion.y+ion.vy*0.05, ion.z+ion.vz*0.05);
+    const tdx = pa.sx - sx, tdy = pa.sy - sy, tl = Math.hypot(tdx, tdy);
+    const ux = tl > 0.5 ? tdx/tl : 0, uy = tl > 0.5 ? tdy/tl : 0;
+
+    ctx.save();
+    ctx.globalAlpha = clamp(fogB(pr.depth), 0.55, 1);
+    // 尾巴
+    if (sp > 40 && tl > 0.5) {
+      const len = Math.min(46, sp*0.16)*sc;
+      const grad = ctx.createLinearGradient(sx,sy,sx-ux*len,sy-uy*len);
+      grad.addColorStop(0, ionColor(sp,0.45)); grad.addColorStop(1, ionColor(sp,0));
+      ctx.strokeStyle = grad; ctx.lineWidth = R*1.1; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-ux*len,sy-uy*len); ctx.stroke();
+    }
+    if (ion.flash > 0.02) { ctx.fillStyle = `rgba(255,255,255,${ion.flash*0.5})`; ctx.beginPath(); ctx.arc(sx,sy,R+(6+ion.flash*8)*sc,0,Math.PI*2); ctx.fill(); }
+    const glow = ctx.createRadialGradient(sx,sy,2,sx,sy,R*1.9);
+    glow.addColorStop(0, ionColor(sp,0.6)); glow.addColorStop(1, ionColor(sp,0));
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sx,sy,R*1.9,0,Math.PI*2); ctx.fill();
+    const body = ctx.createRadialGradient(sx-R*0.32,sy-R*0.36,2,sx,sy,R);
+    body.addColorStop(0,'#ffffff'); body.addColorStop(0.25, ionColor(sp,1)); body.addColorStop(1, ionColor(sp*0.7,1));
+    ctx.fillStyle = body; ctx.beginPath(); ctx.arc(sx,sy,R,0,Math.PI*2); ctx.fill();
+    ctx.lineWidth = Math.max(1,2*sc); ctx.strokeStyle = ionColor(sp*0.5,0.9); ctx.stroke();
+    if (theme === 'kids') {
+      if (R > 9) drawFace(sx,sy,R,t,ux,uy);
+      if (t < 0.12 && R > 9) { ctx.font = `${12*sc|0}px sans-serif`; ctx.textAlign='center'; ctx.fillStyle='#dffaff'; ctx.fillText('❄️', sx+R*0.7, sy-R*0.7); }
+    } else {
+      // 專業：乾淨球體 + 清晰高光點（像離子螢光）
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.beginPath(); ctx.arc(sx-R*0.32, sy-R*0.36, R*0.17, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 臉永遠面向鏡頭（billboard）；ux,uy = 螢幕上的速度方向
+  function drawFace(x,y,R,t,ux,uy) {
+    const ex = R*0.34, ey = -R*0.12;
+    if (t < 0.16) {
+      ctx.lineWidth = Math.max(1.4, R*0.16); ctx.strokeStyle = '#1a2140'; ctx.lineCap='round';
+      [-1,1].forEach(s=>{ ctx.beginPath(); ctx.arc(x+s*ex, y+ey+2, R*0.21, Math.PI*1.05, Math.PI*1.95); ctx.stroke(); });
+      ctx.beginPath(); ctx.arc(x, y+R*0.32, R*0.34, 0.15*Math.PI, 0.85*Math.PI); ctx.stroke();
+    } else {
+      const er = (t>0.66 ? 0.29 : 0.24)*R;
+      [-1,1].forEach(s=>{
+        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x+s*ex, y+ey, er, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle='#16203f'; ctx.beginPath(); ctx.arc(x+s*ex+ux*R*0.1, y+ey+uy*R*0.1, er*0.55, 0, Math.PI*2); ctx.fill();
+      });
+      ctx.fillStyle='#16203f';
+      if (t > 0.6) { ctx.beginPath(); ctx.ellipse(x, y+R*0.36, R*0.2, R*0.26, 0, 0, Math.PI*2); ctx.fill(); }
+      else { ctx.lineWidth=Math.max(1.4,R*0.15); ctx.strokeStyle='#16203f'; ctx.beginPath(); ctx.arc(x, y+R*0.30, R*0.26, 0.1*Math.PI, 0.9*Math.PI); ctx.stroke(); }
+    }
+  }
+
+  function drawCrystalLinks3D(rms) {
+    const ions = state.ions, alpha = Math.max(0, (30 - rms)/30) * 0.45;
+    ctx.strokeStyle = `rgba(120,210,255,${alpha})`; ctx.lineWidth = 2;
+    for (let i=0;i<ions.length;i++) for (let j=i+1;j<ions.length;j++){
+      const d = Math.hypot(ions[i].x-ions[j].x, ions[i].y-ions[j].y, ions[i].z-ions[j].z);
+      if (d < 100) { const a=project(ions[i].x,ions[i].y,ions[i].z), b=project(ions[j].x,ions[j].y,ions[j].z);
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke(); }
+    }
+  }
+
+  // ---------- 慶祝彩帶 ----------
+  let confetti = [];
+  function spawnConfetti() {
+    const emo = ['❄️','✨','🎉','⭐','💎','🔷'];
+    for (let i=0;i<70;i++) confetti.push({
+      x: C + (Math.random()-0.5)*200, y: C - 120 - Math.random()*60,
+      vx:(Math.random()-0.5)*180, vy: -60 - Math.random()*160,
+      g: 240 + Math.random()*120, life: 1.6 + Math.random()*1.2,
+      em: emo[(Math.random()*emo.length)|0], rot:Math.random()*6
+    });
+  }
+  function drawConfetti() {
+    if (!confetti.length) return;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    for (const p of confetti) {
+      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life));
+      ctx.translate(p.x,p.y); ctx.rotate(p.rot); ctx.font='20px sans-serif';
+      ctx.fillText(p.em,0,0); ctx.restore();
+    }
+  }
+  function updateConfetti(dt) {
+    for (const p of confetti){ p.vy += p.g*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.rot += dt*3; p.life -= dt*0.5; }
+    confetti = confetti.filter(p => p.life > 0 && p.y < LOGICAL+40);
+  }
+
+  // ---------- 溫度圖 ----------
+  function drawGraph() {
+    const W = gcanvas.width, H = gcanvas.height;
+    gctx.save(); gctx.scale(dpr,dpr);
+    const w = W/dpr, h = H/dpr;
+    gctx.clearRect(0,0,w,h);
+    // 目標冷區
+    gctx.fillStyle = '#5bd6ff18'; gctx.fillRect(0, h*0.86, w, h*0.14);
+    gctx.strokeStyle='#5bd6ff55'; gctx.setLineDash([4,4]); gctx.beginPath();
+    gctx.moveTo(0,h*0.86); gctx.lineTo(w,h*0.86); gctx.stroke(); gctx.setLineDash([]);
+    if (tempHist.length > 1) {
+      const tMax = tempHist[tempHist.length-1].t, tMin = Math.max(0, tMax - 24);
+      const span = Math.max(0.001, tMax - tMin);
+      gctx.lineWidth = 2.5; gctx.strokeStyle = '#7af0ff'; gctx.beginPath();
+      let first = true;
+      for (const p of tempHist) {
+        if (p.t < tMin) continue;
+        const gx = (p.t - tMin)/span * w;
+        const frac = Math.min(1, Math.sqrt(p.T/30));   // sqrt 讓低溫看得清楚
+        const gy = h - frac*h*0.96 - 2;
+        if (first){ gctx.moveTo(gx,gy); first=false; } else gctx.lineTo(gx,gy);
+      }
+      gctx.stroke();
+    }
+    gctx.fillStyle='#9fb0e8'; gctx.font='11px sans-serif'; gctx.textAlign='left';
+    gctx.fillText('冷', 4, h-6); gctx.fillText('熱', 4, 14);
+    gctx.restore();
+  }
+
+  // ---------- 動態提示 ----------
+  function updateHint(rms) {
+    const d = params.detuning, s = params.intensity, nb = params.beams.length;
+    let msg, ban;
+    if (s <= 0) { msg = '雷射<b>關掉了</b>！把「雷射強度」往右調，光才能推離子 🔦'; ban='雷射關閉中：離子不會變冷'; }
+    else if (nb === 0) { msg = '所有<b>雷射方向都關了</b>！至少打開一邊試試看 ↔️'; ban='沒有任何雷射方向'; }
+    else if (d > 0.2) { msg = '雷射<b>太藍</b>了！看到離子越來越快了嗎？🔥 把顏色滑桿往「紅」拉～'; ban='雷射太藍 → 離子正在被加熱！'; }
+    else if (d >= -0.15) { msg = '剛好<b>對準</b>顏色時，冷卻效果不好（離子被亂打）。往「紅」一點點看看～'; ban='顏色剛好對準：冷卻效果不佳'; }
+    else if ((beamsOn.L||beamsOn.R) && !(beamsOn.U||beamsOn.D)) { msg='只有<b>左右</b>雷射，上下的晃動停不下來！打開上下試試 ⬆️⬇️'; ban='缺少上下方向的雷射'; }
+    else if ((beamsOn.U||beamsOn.D) && !(beamsOn.L||beamsOn.R)) { msg='只有<b>上下</b>雷射，左右的晃動停不下來！打開左右試試 ⬅️➡️'; ban='缺少左右方向的雷射'; }
+    else if (rms < 15) { msg='太厲害了！離子<b>冷到結晶</b>排好隊了 ❄️💎'; ban='完美！這就是雷射冷卻 + 離子晶體'; }
+    else { msg='很好，這是<b>紅失諧冷卻</b>區間，離子正在慢慢變冷 ❄️ 耐心等一下～'; ban='紅失諧冷卻中…離子正在降溫'; }
+    $('hint').innerHTML = msg; $('banner').textContent = ban;
+  }
+
+  // ---------- 主迴圈 ----------
+  let lastTs = 0, acc = 0, histAcc = 0;
+  const DT = 1/60;
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    let frameDt = (ts - lastTs)/1000; lastTs = ts;
+    if (frameDt > 0.1) frameDt = 0.1;   // 切到背景時不要爆衝
+
+    if (running) {
+      acc += frameDt;
+      let steps = 0;
+      while (acc >= DT && steps < 6) { Physics.step(state, params, DT); acc -= DT; simClock += DT; steps++; }
+    }
+    updateConfetti(frameDt);
+
+    // 量測
+    const rms = Physics.rmsSpeed(state);
+    const heatFrac = Math.max(0, Math.min(1, (rms - 6)/150));
+
+    // HUD
+    if (theme === 'pro') {
+      const Tmk = T_D_MK * Math.pow(Math.max(rms, RMS_FLOOR) / RMS_FLOOR, 2);   // 鎖在都普勒極限以上
+      const tStr = Tmk < 10 ? Tmk.toFixed(2) : Tmk < 100 ? Tmk.toFixed(1) : Math.round(Tmk);
+      $('tempVal').textContent = tStr + ' mK';
+      $('thermoNum').textContent = tStr;
+    } else {
+      $('tempVal').textContent = Math.round(heatFrac*100);
+      $('thermoNum').textContent = Math.round(heatFrac*100);
+    }
+    $('speedVal').textContent = Math.round(rms);
+    $('thermoFill').style.height = (heatFrac*100).toFixed(0) + '%';
+    if (params.trapModel === 'rf') {
+      const rr = Physics.radialRMS(state), lvl = rr < 3 ? '無' : rr < 12 ? '弱' : '強';
+      $('microReadout').textContent = `離軸 ${rr.toFixed(1)} px · micromotion：${lvl}`;
+    }
+    let label, color; const pro = theme === 'pro';
+    if (rms < 15) { label = pro ? '晶體 crystal' : '💎 晶體'; color='#5bd6ff'; }
+    else if (rms < 48) { label = pro ? '液態 liquid' : '💧 液態'; color='#7bff8a'; }
+    else { label = pro ? '氣態 gas' : '🔥 氣態'; color='#ff8a5a'; }
+    const sb = $('stateBadge'); sb.textContent = label; sb.style.color = color;
+
+    // 溫度歷史（每 ~0.1s）
+    if (running) { histAcc += frameDt; if (histAcc > 0.1) { histAcc = 0; tempHist.push({ t:simClock, T:Physics.temperature(state) }); if (tempHist.length > 600) tempHist.shift(); } }
+
+    // 勝利判定（持續夠冷 1.2 秒）
+    if (running) {
+      if (rms < 15 && params.intensity > 0 && params.beams.length > 0) {
+        coldTimer += frameDt;
+        if (coldTimer > 1.2 && !won) {
+          won = true;
+          const elapsed = simClock - coolStart;
+          if (bestTime === null || elapsed < bestTime) bestTime = elapsed;
+          $('winText').textContent = theme === 'pro' ? `冷卻時間 ${elapsed.toFixed(1)} s` : `用時 ${elapsed.toFixed(1)} 秒把離子凍住！`;
+          $('win').classList.add('show');
+          if (theme === 'kids') spawnConfetti();
+          winChime();
+        }
+      } else if (rms > 26) { coldTimer = 0; }
+    }
+    // 計時顯示
+    const cur = won ? (Math.max(0, (simClock - coolStart))) : (simClock - coolStart);
+    $('timeVal').innerHTML = `${(won? (bestTime??cur):cur).toFixed(1)}s <span style="font-size:11px;color:#9fb0e8">/ ${bestTime!=null?bestTime.toFixed(1)+'s':'--'}</span>`;
+
+    updateHint(rms);
+    if (autoRotate && !pointerDown) camYaw += frameDt * 0.3;   // 自動緩慢旋轉
+    render();
+    drawGraph();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- 啟動 ----------
+  fit(); applyTheme(theme);
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
