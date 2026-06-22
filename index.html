@@ -70,7 +70,7 @@
   h1 .sp { color:var(--accent); }
   header p { margin:4px 0 0; color:var(--muted); font-size:clamp(12px,2.6vw,15px); }
 
-  .layout { display:flex; gap:16px; width:100%; max-width:1160px; align-items:flex-start; }
+  .layout { display:flex; gap:16px; width:100%; max-width:1400px; align-items:flex-start; }
   @media (max-width:880px){ .layout{ flex-direction:column; align-items:center; } }
 
   /* ----- Stage (canvas + thermometer) ----- */
@@ -115,6 +115,27 @@
   /* ----- Panel ----- */
   .panel { flex:0 0 350px; max-width:100%; display:flex; flex-direction:column; gap:12px; }
   @media (max-width:880px){ .panel{ flex-basis:auto; width:100%; max-width:560px; } }
+  .pcol { display:flex; flex-direction:column; gap:12px; }
+  /* 寬螢幕：右側面板用兩欄並緊湊化，讓所有參數一次顯示、不用捲動 */
+  @media (min-width:1280px){
+    .panel { flex:0 0 728px; flex-direction:row; gap:12px; }
+    .pcol { flex:1 1 0; min-width:0; gap:9px; }
+    .panel .card { padding:10px; }
+    .panel .card h3 { margin-bottom:6px; font-size:14px; }
+    .panel .row { margin:6px 0; }
+    .panel #graph { height:54px; }
+    .panel .beams { width:92px; }
+    .panel .beam-btn { font-size:15px; }
+    .panel .beam-btn.z-beam { font-size:12px; }
+    .panel .trans-info { margin:-2px 0 7px; padding:5px 8px; font-size:10.5px; line-height:1.45; }
+    .panel .stats { gap:8px; }
+    .panel .stat { padding:6px 8px; }
+    .panel .legend { margin-top:6px !important; }
+    .panel .rf-readout { margin-top:5px; padding:7px 9px; line-height:1.6; }
+    .panel .tip-hint { display:none; }                 /* 緊湊模式隱藏靜態提示 */
+    .panel .hint { min-height:0; font-size:12px; margin-top:6px; }
+    .panel .help-btn { margin-top:6px; padding:4px 11px; }
+  }
   .card { background:linear-gradient(180deg,var(--panel),var(--panel2));
           border:1px solid var(--line); border-radius:18px; padding:14px; box-shadow:0 6px 20px #0005; }
   .card h3 { margin:0 0 10px; font-size:15px; color:var(--accent); display:flex; align-items:center; gap:6px; }
@@ -235,6 +256,7 @@
 
     <!-- ===== Panel ===== -->
     <div class="panel">
+      <div class="pcol">
       <div class="card">
         <div class="stats">
           <div class="stat"><div class="v" id="tempVal">--</div><div class="k" id="tempK">溫度 T</div></div>
@@ -277,6 +299,21 @@
         </div>
       </div>
 
+      <div class="card">
+        <h3>🕹️ 控制</h3>
+        <div class="btns">
+          <button class="act go" id="bestBtn">✨ 最佳設定</button>
+          <button class="act warm" id="heatBtn">🔥 加熱搖一搖</button>
+          <button class="act ghost" id="rotateBtn" title="自動旋轉視角">⏸️ 旋轉：關</button>
+          <button class="act ghost" id="pauseBtn">⏸️ 暫停</button>
+          <button class="act ghost" id="resetBtn">🔄 重來</button>
+          <button class="act ghost" id="muteBtn" title="音效">🔊</button>
+        </div>
+        <div class="legend tip-hint" style="margin-top:10px"><span class="pill">💡 拖曳畫面可 360° 旋轉看立體；輕點一下離子可以戳它一下 👆</span></div>
+      </div>
+      </div><!-- /pcol 1 -->
+
+      <div class="pcol">
       <div class="card pro-only" id="rfCard">
         <h3 id="rfTitle">阱模型 · micromotion</h3>
         <div class="trans-info pro-only">線形 Paul trap：贗位能＝RF 時間平均（快、無 micromotion）；真實 RF＝顯式積分時變四極場（會看到 micromotion）。</div>
@@ -310,24 +347,12 @@
       </div>
 
       <div class="card">
-        <h3>🕹️ 控制</h3>
-        <div class="btns">
-          <button class="act go" id="bestBtn">✨ 最佳設定</button>
-          <button class="act warm" id="heatBtn">🔥 加熱搖一搖</button>
-          <button class="act ghost" id="rotateBtn" title="自動旋轉視角">⏸️ 旋轉：關</button>
-          <button class="act ghost" id="pauseBtn">⏸️ 暫停</button>
-          <button class="act ghost" id="resetBtn">🔄 重來</button>
-          <button class="act ghost" id="muteBtn" title="音效">🔊</button>
-        </div>
-        <div class="legend" style="margin-top:10px"><span class="pill">💡 拖曳畫面可 360° 旋轉看立體；輕點一下離子可以戳它一下 👆</span></div>
-      </div>
-
-      <div class="card">
         <h3>📈 溫度變化</h3>
         <canvas id="graph"></canvas>
         <div class="hint" id="hint" style="margin-top:8px">調調看上面的滑桿，觀察溫度怎麼變～</div>
         <button class="help-btn" id="helpBtn">❓ 為什麼雷射可以讓離子變冷？</button>
       </div>
+      </div><!-- /pcol 2 -->
     </div>
   </div>
   <div class="foot">離子阱 × 都普勒雷射冷卻 · 國小科普互動遊戲</div>
