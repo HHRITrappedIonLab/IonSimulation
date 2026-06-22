@@ -318,13 +318,13 @@
         <h3 id="rfTitle">阱模型 · micromotion</h3>
         <div class="trans-info pro-only">線形 Paul trap：贗位能＝RF 時間平均（快、無 micromotion）；真實 RF＝顯式積分時變四極場（會看到 micromotion）。</div>
         <div class="row">
-          <label>阱模型 <span class="val" id="trapModelLab">贗位能</span></label>
+          <label>阱模型 <span class="val" id="trapModelLab">真實 RF</span></label>
           <div class="seg">
-            <button class="seg-btn on" data-trap="secular">贗位能 (secular)</button>
-            <button class="seg-btn" data-trap="rf">真實 RF</button>
+            <button class="seg-btn" data-trap="secular">贗位能 (secular)</button>
+            <button class="seg-btn on" data-trap="rf">真實 RF</button>
           </div>
         </div>
-        <div id="rfControls" style="display:none">
+        <div id="rfControls" style="display:block">
           <div class="row">
             <label>RF 頻率 Ω/2π <span class="val" id="rfFreqLab">20.0 MHz</span></label>
             <input type="range" id="rfOmega" min="24" max="90" step="1" value="39" />
@@ -425,7 +425,7 @@
     F:{nx:0,ny:0,nz:1}, B:{nx:0,ny:0,nz:-1},
   };
   // 線形阱（trapKx 弱、trapKy/Kz 強，已是 physics.js 預設）→ 離子排成立體線形離子鏈
-  const params = Physics.makeParams({ detuning:-0.5, intensity:1.5 });
+  const params = Physics.makeParams({ detuning:-0.5, intensity:1.5, trapModel:'rf' });
   let state = Physics.createState(6, { initialSpeed:120 });
   let running = true;
   let muted = false;
@@ -985,7 +985,7 @@
   }
 
   // ---------- 啟動 ----------
-  fit(); applyTheme(theme);
+  fit(); applyTheme(theme); setTrapModel(params.trapModel);   // 預設啟動就用真實 RF
   requestAnimationFrame(loop);
 })();
 </script>
