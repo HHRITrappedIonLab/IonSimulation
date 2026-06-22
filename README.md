@@ -103,13 +103,20 @@
 
 ```
 laser-cooling-game/
-├── index.html                      # 遊戲本體（介面 + 3D 渲染），載入 physics.js
+├── index.html                      # 遊戲本體（介面 + 3D 渲染），載入 physics.js、keymap.js
 ├── physics.js                      # 物理模擬核心（瀏覽器 / Node 雙用）
+├── keymap.js                       # 模組化鍵盤快捷鍵（宣告式註冊表，drop-in）
 ├── physics-and-implementation.html # 詳細說明：物理原理 ↔ 程式實作（公式 + 程式片段）
 ├── test/
 │   └── physics.test.cjs            # 物理單元測試（冷卻/加熱/穩定性/線形鏈）
 └── README.md
 ```
+
+### ⌨ 鍵盤快捷鍵
+
+`←/→` 調整選定參數（Shift＝粗調）、`↑/↓` 切換參數；`Space` 播放暫停、`R` 重來、`H` 加熱、`B` 最佳、`M` 靜音、`O` 旋轉、`T` 主題、`F` 阱模型、`1–6` 六道雷射、`?` 顯示完整快捷鍵表。
+
+> **要新增快捷鍵？** 改 `keymap.js`：在 `ACTIONS`（一次性指令 `{keys, group, desc, run}`）或 `PARAMS`（可調滑桿 `{id, name}`）裡加一行即可；按 `?` 的說明表會自動同步。也可在執行期用 `window.Keymap.registerAction(...)` / `registerParam(...)` 程式化擴充。keymap.js 只操作 DOM 上既有的控制項，與主程式解耦。
 
 > 想看完整的**物理推導與實作方法**（Doppler 冷卻力、都普勒極限、Paul trap 贗位能、平均光壓+反衝擴散的數值模型、3D 投影…），打開 **`physics-and-implementation.html`**，或從遊戲右上角的「📄 物理原理與實作說明」進入。
 

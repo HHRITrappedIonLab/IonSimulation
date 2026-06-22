@@ -391,7 +391,8 @@ prims.<span class="f">sort</span>((a,b) =&gt; b.depth - a.depth);            <sp
       <table>
         <tr><th>檔案</th><th>職責</th></tr>
         <tr><td><code>physics.js</code></td><td>純物理引擎（瀏覽器 / Node 雙用）：<code>createState</code>、<code>step</code>、<code>conservativeAccel</code>、診斷量 <code>meanKE / temperature / rmsSpeed</code>。所有常數集中在 <code>DEFAULTS</code>。</td></tr>
-        <tr><td><code>index.html</code></td><td>介面 + 3D 渲染 + 主迴圈（固定步長累加器）+ 主題系統（專業/童趣）+ 音效。載入 <code>physics.js</code>。</td></tr>
+        <tr><td><code>index.html</code></td><td>介面 + 3D 渲染 + 主迴圈（固定步長累加器）+ 主題系統（專業/童趣）+ 音效。載入 <code>physics.js</code>、<code>keymap.js</code>。</td></tr>
+        <tr><td><code>keymap.js</code></td><td>模組化鍵盤快捷鍵（drop-in）。兩張宣告式註冊表 <code>ACTIONS</code> / <code>PARAMS</code>，按 <code>?</code> 的說明自動生成；只操作 DOM 上既有控制項（dispatch <code>input</code>／<code>click</code>），與主程式解耦。對外 <code>window.Keymap.registerAction/registerParam</code> 可擴充。</td></tr>
         <tr><td><code>test/physics.test.cjs</code></td><td>Node 單元測試：驗證紅失諧冷卻、藍失諧加熱、共振較差、形成線形鏈（離軸 &lt; 18px、不重疊）、極端參數不發散。</td></tr>
       </table>
       <p>主迴圈用<strong>固定步長累加器</strong>：不論畫面幀率如何，物理一律以 <code>dt = 1/60 s</code> 推進，確保行為可重現、與顯示解耦。</p>
