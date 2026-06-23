@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-06-23
+
+### Changed
+- Promote the loading controls to a prominent action bar directly under the 3D trap (🧪 噴原子載入 / 🗑️ 清空阱 / 🟣 PI 399nm), where the oven is rendered; the live "trapped · atoms · lost" count moved there too. Removed the side-panel loading card — net page height is unchanged (slightly shorter).
+
 ## [1.4.2] - 2026-06-23
 
 ### Added

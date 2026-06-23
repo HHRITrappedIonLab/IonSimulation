@@ -75,7 +75,14 @@
 
   /* ----- Stage (canvas + thermometer) ----- */
   .stage { position:relative; flex:1 1 auto; min-width:0;
-           display:flex; gap:12px; align-items:stretch; }
+           display:flex; flex-direction:column; gap:10px; }
+  .stage-top { display:flex; gap:12px; align-items:stretch; min-width:0; }
+  .load-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 12px; }
+  .load-bar .load-title { font-weight:700; font-size:14px; color:var(--ink); white-space:nowrap; }
+  .load-bar .act { flex:0 0 auto; padding:10px 14px; }
+  .load-bar #loadBtn { font-size:15px; padding:10px 20px; }
+  .load-bar #piBtn.on { box-shadow:0 0 0 1.5px #a874ff55, 0 2px 0 #070d16, 0 4px 10px #0006; color:#d7c3ff; }
+  .load-bar .load-count { margin-left:auto; font-size:13px; color:var(--muted); white-space:nowrap; }
   .canvas-wrap { position:relative; flex:1 1 auto; aspect-ratio:1/1; min-width:0; max-width:78vh;
                  border-radius:22px; overflow:hidden;
                  box-shadow:0 10px 40px #0008, inset 0 0 0 2px #ffffff14; }
@@ -239,7 +246,7 @@
 </style>
 </head>
 <body class="pro">
-  <div class="app-ver" id="appVer">v1.4.2</div>
+  <div class="app-ver" id="appVer">v1.4.3</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
@@ -253,6 +260,7 @@
   <div class="layout">
     <!-- ===== Stage ===== -->
     <div class="stage">
+      <div class="stage-top">
       <div class="canvas-wrap">
         <canvas id="trap"></canvas>
         <div class="banner" id="banner">把雷射顏色調到「最佳冷卻」，看看離子會怎樣？</div>
@@ -268,6 +276,15 @@
         <div class="lab">❄️</div>
         <div class="num" id="thermoNum">--</div>
       </div>
+      </div><!-- /stage-top -->
+
+      <div class="card load-bar">
+        <span class="load-title">🧪 離子源</span>
+        <button class="act go" id="loadBtn">🧪 噴原子載入</button>
+        <button class="act ghost" id="clearBtn" title="清空阱；或把「離子數量」拉到 0 重來＝空阱開始">🗑️ 清空阱</button>
+        <button class="act ghost on" id="piBtn">🟣 PI 399nm：開</button>
+        <span class="load-count" id="ionLive">阱中 6 顆</span>
+      </div>
     </div>
 
     <!-- ===== Panel ===== -->
@@ -281,7 +298,6 @@
           <div class="stat"><div class="v" id="timeVal">--</div><div class="k">冷卻用時 / 最佳</div></div>
         </div>
         <div class="legend"><span>慢·冷</span><div class="bar"></div><span>快·熱</span></div>
-        <div class="legend" style="margin-top:8px"><span class="pill" id="ionLive">阱中 6 顆</span></div>
       </div>
 
       <div class="card">
@@ -360,16 +376,6 @@
           <div class="rf-readout" id="secularReadout">secular 頻率 …</div>
           <div class="legend" style="margin-top:6px"><span class="pill" id="microReadout">離軸 0.0 px · micromotion：無</span></div>
         </div>
-      </div>
-
-      <div class="card">
-        <h3>🧪 離子源 · Loading</h3>
-        <div class="btns">
-          <button class="act go" id="loadBtn">🧪 噴原子</button>
-          <button class="act ghost" id="clearBtn">🗑️ 清空阱</button>
-          <button class="act ghost on" id="piBtn" title="399 nm 光游離雷射開關">🟣 PI 399nm：開</button>
-        </div>
-        <div class="legend tip-hint" style="margin-top:8px"><span class="pill">💡 原子爐＋399 nm 光游離：把離子數量拉到 0 重來＝空阱，再「噴原子」用噴嘴抓第一顆！</span></div>
       </div>
 
       <div class="card">
