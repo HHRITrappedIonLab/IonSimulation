@@ -36,6 +36,12 @@
   .trans-info { font-size:11.5px; color:var(--muted); margin:-2px 0 12px; padding:7px 10px;
      background:rgba(51,214,196,0.07); border:1px solid var(--line); border-radius:9px; line-height:1.6; }
   .trans-info sub { font-size:9px; }
+  /* 公式列：每個項目不換行（避免「19.6 | MHz」斷開），數值加粗、上下標放大 */
+  .trans-formula { display:flex; flex-wrap:wrap; align-items:baseline; column-gap:15px; row-gap:3px; }
+  .trans-formula .ti { white-space:nowrap; }
+  .trans-formula .ti b { color:var(--ink); font-weight:600; }
+  .trans-formula sup, .trans-formula sub { font-size:0.82em; }
+  .panel .card .trans-formula { font-size:12px; line-height:1.5; }
   .rf-readout { font-size:12px; color:var(--muted); line-height:1.75; margin-top:6px;
      padding:8px 10px; background:rgba(51,214,196,0.06); border:1px solid var(--line); border-radius:9px; }
   .rf-readout b { color:var(--ink); font-variant-numeric:tabular-nums; }
@@ -252,7 +258,7 @@
 </style>
 </head>
 <body class="pro">
-  <div class="app-ver" id="appVer">v1.5.4</div>
+  <div class="app-ver" id="appVer">v1.5.5</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
@@ -309,7 +315,13 @@
 
       <div class="card">
         <h3 id="paramTitle">雷射參數 · ¹⁷¹Yb⁺ 369 nm</h3>
-        <div class="trans-info pro-only"><sup>171</sup>Yb<sup>+</sup>　<sup>2</sup>S<sub>1/2</sub> → <sup>2</sup>P<sub>1/2</sub>　λ = 369.5 nm　Γ/2π = 19.6 MHz　T<sub>D</sub> ≈ 0.47 mK</div>
+        <div class="trans-info trans-formula pro-only">
+          <span class="ti"><sup>171</sup>Yb<sup>+</sup></span>
+          <span class="ti"><sup>2</sup>S<sub>1/2</sub> → <sup>2</sup>P<sub>1/2</sub></span>
+          <span class="ti">λ = <b>369.5 nm</b></span>
+          <span class="ti">Γ/2π = <b>19.6 MHz</b></span>
+          <span class="ti">T<sub>D</sub> ≈ <b>0.47 mK</b></span>
+        </div>
         <div class="row">
           <label><span id="detuneName">失諧 δ</span><span class="val" id="detuneLab">—</span></label>
           <input type="range" id="detune" min="-2.5" max="2.5" step="0.05" value="-0.5" />
