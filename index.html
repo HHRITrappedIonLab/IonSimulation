@@ -251,7 +251,7 @@
 </style>
 </head>
 <body class="pro">
-  <div class="app-ver" id="appVer">v1.5.2</div>
+  <div class="app-ver" id="appVer">v1.5.3</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
@@ -846,10 +846,9 @@
     if (theme === 'pro') { ctx.fillStyle='rgba(200,210,230,0.78)'; ctx.font=`${Math.max(9,12*o.scale)|0}px ui-sans-serif,sans-serif`; ctx.textAlign='center'; ctx.fillText('oven', o.sx, o.sy + r + 13*o.scale); }
     // 399 nm 光游離雷射：斜向束穿過阱中心（與冷卻光區隔）+ 呼吸式游離光斑 + 標籤
     if (on) {
-      // 沿著原子束路徑（噴嘴→阱中心）打 399，剛好命中飛行中的原子
-      const bl = Math.hypot(params.nozzleX, params.nozzleY, params.nozzleZ) || 1;
-      const ux = -params.nozzleX/bl, uy = -params.nozzleY/bl, uz = -params.nozzleZ/bl;
-      const a1 = project(-ux*140, -uy*140, -uz*140), b1 = project(ux*165, uy*165, uz*165);
+      // 399 從畫面右上角斜射入、穿過阱中心（在中心命中飛行中的原子）
+      const dx = 0.608, dy = -0.710, dz = -0.355;   // 投影後：右上 → 左下，通過中心
+      const a1 = project(dx*320, dy*320, dz*320), b1 = project(-dx*150, -dy*150, -dz*150);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.lineCap = 'round';
@@ -864,7 +863,7 @@
       ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(c.sx,c.sy,pr,0,Math.PI*2); ctx.fill();
       ctx.restore();
       ctx.fillStyle = 'rgba(210,158,255,0.92)'; ctx.font = `${Math.max(9,11*c.scale)|0}px ui-sans-serif,sans-serif`;
-      ctx.textAlign = 'left'; ctx.fillText('399 nm PI', b1.sx+5, b1.sy+3);
+      ctx.textAlign = 'right'; ctx.fillText('399 nm PI', a1.sx-6, a1.sy);
     }
     ctx.restore();
   }
