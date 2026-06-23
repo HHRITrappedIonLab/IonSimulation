@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-06-23
+
+### Changed
+- Loading now adds exactly one ion per click (a single atom with a higher photoionization rate) instead of streaming a burst of ~10.
+
+### Fixed
+- The 399 nm photoionization laser is now clearly visible — a labelled violet beam crossing the trap centre plus a pulsing ionization spot — shown only when PI is on (and it disappears when toggled off).
+
 ## [1.5.0] - 2026-06-23
 
 ### Added

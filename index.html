@@ -251,7 +251,7 @@
 </style>
 </head>
 <body class="pro">
-  <div class="app-ver" id="appVer">v1.5.0</div>
+  <div class="app-ver" id="appVer">v1.5.1</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
@@ -469,7 +469,6 @@
   const params = Physics.makeParams({ detuning:-0.5, intensity:1.5, trapModel:'rf' });
   let state = Physics.createState(0, { initialSpeed:120 });   // 預設空阱：用噴嘴載入第一顆
   let prevTrapped = state.ions.length;   // 上一幀阱中離子數（偵測捕獲↑/流失↓ 提示音）
-  let loadQueue = 0;     // 待噴出的原子數（分幀噴出 → 原子束串流感）
   let animT = 0;         // 噴嘴 / 光游離動畫時鐘
   let _needsLoad = null; // 「空阱請載入」閃動提示的快取狀態
   let running = true;
@@ -667,7 +666,7 @@
   $('heatBtn').addEventListener('click', () => { ensureAudio(); heat(); });
   $('resetBtn').addEventListener('click', () => { ensureAudio(); resetIons(parseInt(ionCount.value,10)); blip(523,0.06); });
   // 噴嘴 loading：噴中性原子束、清空阱、399 nm 光游離雷射開關
-  $('loadBtn').addEventListener('click', () => { ensureAudio(); loadQueue += 14; blip(300, 0.05); });
+  $('loadBtn').addEventListener('click', () => { ensureAudio(); Physics.spawnAtoms(state, params, 1, Math.random); blip(300, 0.05); });
   $('clearBtn').addEventListener('click', () => {
     ensureAudio(); state.ions.length = 0; state.lost = 0; prevTrapped = 0;
     coldTimer = 0; won = false; $('win').classList.remove('show'); blip(200, 0.05);
@@ -833,13 +832,25 @@
     ctx.beginPath(); ctx.arc(o.sx,o.sy,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#2c323d'; ctx.beginPath(); ctx.arc(o.sx,o.sy,r*0.48,0,Math.PI*2); ctx.fill();
     if (theme === 'pro') { ctx.fillStyle='rgba(200,210,230,0.78)'; ctx.font=`${Math.max(9,12*o.scale)|0}px ui-sans-serif,sans-serif`; ctx.textAlign='center'; ctx.fillText('oven', o.sx, o.sy + r + 13*o.scale); }
-    // 399 nm 游離區（呼吸式紫光）
+    // 399 nm 光游離雷射：斜向束穿過阱中心（與冷卻光區隔）+ 呼吸式游離光斑 + 標籤
     if (on) {
-      const pulse = 0.7 + 0.3*Math.sin(animT*3.0);
-      const pr = params.piRadius * c.scale * (0.92 + 0.16*Math.sin(animT*3.0));
+      const dl = 235, dx = 0.62, dy = 0.26, dz = -0.74;          // 斜向單位向量（非軸向）
+      const a1 = project(-dx*dl, -dy*dl, -dz*dl), b1 = project(dx*dl, dy*dl, dz*dl);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(168,96,255,0.20)'; ctx.lineWidth = 15*c.scale;            // 外暈
+      ctx.beginPath(); ctx.moveTo(a1.sx,a1.sy); ctx.lineTo(b1.sx,b1.sy); ctx.stroke();
+      ctx.strokeStyle = 'rgba(210,158,255,0.6)'; ctx.lineWidth = 3.5*c.scale;           // 亮芯
+      ctx.beginPath(); ctx.moveTo(a1.sx,a1.sy); ctx.lineTo(b1.sx,b1.sy); ctx.stroke();
+      const pulse = 0.7 + 0.3*Math.sin(animT*3.0);                                      // 中心游離光斑（呼吸）
+      const pr = params.piRadius * c.scale * (1.0 + 0.18*Math.sin(animT*3.0)) * 1.5;
       const gg = ctx.createRadialGradient(c.sx,c.sy,1,c.sx,c.sy,pr);
-      gg.addColorStop(0,`rgba(150,90,255,${0.12*pulse+0.06})`); gg.addColorStop(1,'rgba(150,90,255,0)');
+      gg.addColorStop(0,`rgba(190,120,255,${0.30*pulse+0.12})`); gg.addColorStop(1,'rgba(150,90,255,0)');
       ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(c.sx,c.sy,pr,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(210,158,255,0.92)'; ctx.font = `${Math.max(9,11*c.scale)|0}px ui-sans-serif,sans-serif`;
+      ctx.textAlign = 'left'; ctx.fillText('399 nm PI', b1.sx+5, b1.sy+3);
     }
     ctx.restore();
   }
@@ -1055,8 +1066,6 @@
     }
     updateConfetti(frameDt);
     animT += frameDt;
-    // 噴嘴串流：把排隊的原子分幀噴出（看起來像連續的原子束）
-    if (loadQueue > 0 && running) { Physics.spawnAtoms(state, params, 1, Math.random); loadQueue--; }
 
     // 阱中離子數變化 → 捕獲(↑)/流失(↓) 提示音；重來/清空會自行同步 prevTrapped 避免誤觸
     const cts = Physics.counts(state);
@@ -1064,8 +1073,8 @@
     if (nIon < prevTrapped) blip(165, 0.09);        // 流失
     else if (nIon > prevTrapped) blip(880, 0.05);   // 捕獲
     prevTrapped = nIon;
-    // 空阱（無離子、無原子、沒在載入）→ 閃動提示「按這裡載入」
-    const needsLoad = cts.trapped === 0 && cts.neutral === 0 && loadQueue === 0;
+    // 空阱（無離子、無飛行中原子）→ 閃動提示「按這裡載入」
+    const needsLoad = cts.trapped === 0 && cts.neutral === 0;
     if (needsLoad !== _needsLoad) {
       _needsLoad = needsLoad;
       $('loadBtn').classList.toggle('attn', needsLoad);
