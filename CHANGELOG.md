@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-06-23
+
+### Added
+- Start with an empty trap by default — load the first ion yourself with the nozzle. A pulsing "👈 先載入離子" hint on the Load button appears whenever the trap is empty (no ions, no incoming atoms).
+
+### Changed
+- Loading is now dynamic: clicking Load streams atoms out of the oven over several frames, the oven mouth and the 399 nm ionization region breathe/pulse, and the atomic beam shows flowing particles.
+
 ## [1.4.3] - 2026-06-23
 
 ### Changed
