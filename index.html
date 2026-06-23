@@ -258,7 +258,7 @@
 </style>
 </head>
 <body class="pro">
-  <div class="app-ver" id="appVer">v1.5.5</div>
+  <div class="app-ver" id="appVer">v1.6.0</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
@@ -378,11 +378,11 @@
         <div id="rfControls" style="display:block">
           <div class="row">
             <label>RF 頻率 Ω/2π <span class="val" id="rfFreqLab">20.0 MHz</span></label>
-            <input type="range" id="rfOmega" min="24" max="90" step="1" value="39" />
+            <input type="range" id="rfOmega" min="18" max="90" step="1" value="39" />
           </div>
           <div class="row">
             <label>RF 電壓 V<sub>RF</sub> <span class="val" id="rfAmpLab">305</span></label>
-            <input type="range" id="rfAmp" min="120" max="520" step="5" value="305" />
+            <input type="range" id="rfAmp" min="120" max="760" step="5" value="305" />
           </div>
           <div class="row">
             <label>DC 端蓋電壓 U<sub>DC</sub>（軸向）<span class="val" id="dcLab">1.0</span></label>
@@ -390,7 +390,7 @@
           </div>
           <div class="row">
             <label>雜散 DC 場（excess micromotion）<span class="val" id="strayLab">0</span></label>
-            <input type="range" id="strayField" min="0" max="1400" step="20" value="0" />
+            <input type="range" id="strayField" min="0" max="2800" step="40" value="0" />
           </div>
           <div class="rf-readout" id="secularReadout">secular 頻率 …</div>
           <div class="legend" style="margin-top:6px"><span class="pill" id="microReadout">離軸 0.0 px · micromotion：無</span></div>

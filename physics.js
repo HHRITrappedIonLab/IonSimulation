@@ -47,9 +47,9 @@
 
     // ---- 離子流失（沒抓住就散掉）----
     loss: true,          // 開啟：離開捕獲區的離子會「散掉」並從模擬移除
-    escapeRho: 100,      // 離軸(徑向)逃逸半徑 (px)：離軸超過 → 視為撞上/越過電極 → 流失（≈ 電極孔徑 ROD_R）
+    escapeRho: 78,       // 離軸(徑向)逃逸半徑 (px)：離軸超過 → 視為撞上/越過電極 → 流失（較小 → 較易逃逸）
     cullRadius: 380,     // 流失離子彈道飛出此半徑後從陣列移除 (px，畫面外)
-    ejectK: 50,          // 阱不穩定(Mathieu q≥0.908 或 贗位能 Krad≤0)時的向外反束縛剛性 → 指數甩出離子
+    ejectK: 90,          // 阱不穩定(Mathieu q≥0.908 或 贗位能 Krad≤0)時的向外反束縛剛性 → 指數甩出離子（越大甩越快）
 
     // ---- 離子源 / loading（噴嘴原子爐 + 399 nm 光游離）----
     loading: true,       // 啟用中性原子 / 光游離流程
@@ -99,7 +99,7 @@
       const speed = baseSpeed * (0.5 + rng());
       // 初始熱雲：線形阱裡沿軸向(x)較長、徑向(y,z)較窄，並維持在捕獲區內（避免一載入就流失）
       ions.push({
-        x: p.x * rad * 0.45, y: p.y * rad * 0.18, z: p.z * rad * 0.18,
+        x: p.x * rad * 0.45, y: p.y * rad * 0.14, z: p.z * rad * 0.14,
         vx: v.x * speed, vy: v.y * speed, vz: v.z * speed,
         flash: 0, kind: 'ion',
       });
@@ -168,8 +168,10 @@
     if (state.clock == null) state.clock = 0;
     if (state.lost == null) state.lost = 0;
     // 阱徑向是否不穩定（Mathieu q≥0.908 或 贗位能 Krad≤0）→ 開啟流失時把離子甩出捕獲區
-    const unstable = p.loss ? !secularFreqs(p).stable : false;
-    const ejectK = p.ejectK || 0;
+    const sf = secularFreqs(p);
+    const unstable = p.loss ? !sf.stable : false;
+    // 甩出強度蓋過徑向束縛 Krad（拉高 V_RF / 降頻會同時加大 Krad）→ 不穩定時必定淨向外甩出
+    const ejectK = unstable ? (Math.max(0, sf.Krad) + (p.ejectK || 0)) : 0;
 
     for (let st = 0; st < sub; st++) {
       const rfCos = rf ? Math.cos(Omega * state.clock) : 0;

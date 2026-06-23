@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-06-23
+
+### Changed
+- Ion loss is now much easier to trigger on purpose: the RF-voltage slider reaches higher (max 760), the RF-frequency slider reaches lower (min 18), and the stray-field slider reaches higher (max 2800). Cranking V_RF up or dropping the RF frequency (both push Mathieu q past 0.908), or raising the stray DC field, now flings ions out of the trap. The default trap still cools and keeps every ion (escapeRho 78, tighter initial cloud).
+
+### Fixed
+- The instability ejection now scales with the pseudopotential strength (Krad), so the "✕ 不穩定（離子流失）" readout reliably matches the dynamics — ions actually escape whenever the trap is flagged unstable, even at high RF voltage (previously a strong pseudopotential could keep them trapped).
+
 ## [1.5.5] - 2026-06-23
 
 ### Changed

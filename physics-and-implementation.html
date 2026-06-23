@@ -397,7 +397,7 @@ prims.<span class="f">sort</span>((a,b) =&gt; b.depth - a.depth);            <sp
         <li><strong>徑向不束縛</strong>：當贗位能剛性 \( K_\text{rad} = A^2/2\Omega^2 - K_x/2 \le 0 \)（RF 太弱或 DC 散焦太強），徑向沒有回復力。</li>
         <li><strong>過熱／雜散場</strong>：把離子加熱到振幅超過 \( R_\text{trap} \)，或強雜散 DC 場把平衡點推進電極。</li>
       </ul>
-      <p><code>step()</code> 每步用 <code>secularFreqs</code> 判定阱是否不穩定；不穩定時對每顆離子加一個<strong>向外反束縛</strong>加速度 \( \propto +K_\text{eject}\,\rho \)（重現虛頻率的指數發散；RF 模式本身也會自然發散）。一旦離軸距離 \( \rho=\sqrt{y^2+z^2} \) 超過逃逸半徑 <code>escapeRho</code>，該離子標記為 <code>lost</code> → 改為彈道飛行（不再受阱力／冷卻／庫倫力）→ 飛出 <code>cullRadius</code> 後移除並累計流失數。<strong>預設阱夠深</strong>：正常冷卻／加熱時離子離軸 \( \lesssim 62 \) px &lt; 電極孔徑（\( \approx 92 \) px），所以一顆都不掉；只有把參數推進不穩定區才會流失。</p>
+      <p><code>step()</code> 每步用 <code>secularFreqs</code> 判定阱是否不穩定；不穩定時對每顆離子加一個<strong>向外反束縛</strong>加速度 \( \propto +K_\text{eject}\,\rho \)（重現虛頻率的指數發散；RF 模式本身也會自然發散）。一旦離軸距離 \( \rho=\sqrt{y^2+z^2} \) 超過逃逸半徑 <code>escapeRho</code>，該離子標記為 <code>lost</code> → 改為彈道飛行（不再受阱力／冷卻／庫倫力）→ 飛出 <code>cullRadius</code> 後移除並累計流失數。<strong>預設仍抓得住</strong>：正常冷卻時離子離軸 \( \lesssim 62 \) px &lt; 逃逸半徑（\( \approx 78 \) px），所以一顆都不掉；但只要把 <strong>RF 電壓調高</strong>、<strong>RF 頻率調低</strong>（兩者都把 \( q \) 推過 0.908）或<strong>雜散場調大</strong>（把離子推離 RF 零點超過逃逸半徑），離子就會被甩出流失。</p>
       <pre>unstable = !secularFreqs(p).stable          <span class="c">// q≥0.908 或 Krad≤0</span>
 <span class="k">if</span> (unstable) { ay += ejectK*y; az += ejectK*z }     <span class="c">// 反束縛 → 指數甩出</span>
 <span class="k">if</span> (y*y + z*z &gt; escapeRho*escapeRho) ion.lost = <span class="k">true</span>  <span class="c">// 越過電極 → 流失</span></pre>
@@ -431,7 +431,7 @@ coulomb:300000, softening:12     <span class="c">// 庫倫強度與軟化長度<
 gamma:1, dopplerCoef:0.004       <span class="c">// 線寬 Γ 與都普勒靈敏度 k（捕捉速度=γ/k）</span>
 forceScale:260                   <span class="c">// 光壓力尺度 → 冷卻快慢</span>
 noiseAmp:7.5                     <span class="c">// 反衝擴散 → 決定都普勒極限地板</span>
-loss:true, escapeRho:100, ejectK:50    <span class="c">// 流失：逃逸半徑、阱不穩定向外甩出</span>
+loss:true, escapeRho:78, ejectK:90    <span class="c">// 流失：逃逸半徑(小→易逃)、不穩定向外甩出</span>
 loading:true, piLaser:true, piRadius:42, piRate:8  <span class="c">// 噴嘴載入：399nm 光游離（單顆原子幾乎必游離）</span></pre>
     </section>
 
