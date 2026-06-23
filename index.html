@@ -232,9 +232,14 @@
   .foot { color:var(--muted); font-size:11.5px; text-align:center; margin-top:2px; }
   .pill { display:inline-block; background:#0d1240; border:1px solid var(--line); border-radius:999px;
           padding:1px 8px; font-size:12px; }
+  .app-ver { position:fixed; top:9px; right:13px; z-index:40; pointer-events:none;
+             font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.6px;
+             color:#9fb3c8; background:rgba(255,255,255,0.05);
+             border:1px solid rgba(255,255,255,0.10); padding:3px 9px; border-radius:999px; }
 </style>
 </head>
 <body class="pro">
+  <div class="app-ver" id="appVer">v1.4.2</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
