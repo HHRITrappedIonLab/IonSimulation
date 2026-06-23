@@ -129,8 +129,9 @@
     <div class="grp">渲染 / 結構</div>
     <a href="#render">12 · 3D 投影與深度排序</a>
     <a href="#electrode">13 · 電極與雷射的繪製</a>
-    <a href="#code">14 · 程式結構與測試</a>
-    <a href="#real">15 · 對應真實實驗</a>
+    <a href="#loss">14 · 離子流失與載入</a>
+    <a href="#code">15 · 程式結構與測試</a>
+    <a href="#real">16 · 對應真實實驗</a>
   </nav>
 
   <main>
@@ -386,14 +387,41 @@ prims.<span class="f">sort</span>((a,b) =&gt; b.depth - a.depth);            <sp
     </section>
 
     <!-- ============ 14 ============ -->
+    <section id="loss">
+      <h2><span class="n">14</span>離子流失與載入：沒抓住就散掉 · 噴嘴 loading</h2>
+
+      <h3>有限阱深與穩定區：為什麼會「散掉」</h3>
+      <p>離子阱能抓住離子是有<strong>極限</strong>的。在 secular 贗位能近似下徑向是一個諧振井，井深 \( D_r \sim \tfrac12 m\,\omega_r^2 R_\text{trap}^2 \)（\( R_\text{trap} \) ≈ 電極孔徑）。當離子徑向振幅超過 \( R_\text{trap} \)（撞上／越過電極），或阱根本不再束縛時，它就離開捕獲區、再也回不來——這就是<strong>離子流失（ion loss）</strong>。模擬有三條流失通道：</p>
+      <ul>
+        <li><strong>Mathieu 不穩定</strong>：當 \( q = 2A/\Omega^2 \gtrsim 0.908 \)，徑向本徵頻率變虛 → 振幅指數成長 → 離子被甩出。</li>
+        <li><strong>徑向不束縛</strong>：當贗位能剛性 \( K_\text{rad} = A^2/2\Omega^2 - K_x/2 \le 0 \)（RF 太弱或 DC 散焦太強），徑向沒有回復力。</li>
+        <li><strong>過熱／雜散場</strong>：把離子加熱到振幅超過 \( R_\text{trap} \)，或強雜散 DC 場把平衡點推進電極。</li>
+      </ul>
+      <p><code>step()</code> 每步用 <code>secularFreqs</code> 判定阱是否不穩定；不穩定時對每顆離子加一個<strong>向外反束縛</strong>加速度 \( \propto +K_\text{eject}\,\rho \)（重現虛頻率的指數發散；RF 模式本身也會自然發散）。一旦離軸距離 \( \rho=\sqrt{y^2+z^2} \) 超過逃逸半徑 <code>escapeRho</code>，該離子標記為 <code>lost</code> → 改為彈道飛行（不再受阱力／冷卻／庫倫力）→ 飛出 <code>cullRadius</code> 後移除並累計流失數。<strong>預設阱夠深</strong>：正常冷卻／加熱時離子離軸 \( \lesssim 62 \) px &lt; 電極孔徑（\( \approx 92 \) px），所以一顆都不掉；只有把參數推進不穩定區才會流失。</p>
+      <pre>unstable = !secularFreqs(p).stable          <span class="c">// q≥0.908 或 Krad≤0</span>
+<span class="k">if</span> (unstable) { ay += ejectK*y; az += ejectK*z }     <span class="c">// 反束縛 → 指數甩出</span>
+<span class="k">if</span> (y*y + z*z &gt; escapeRho*escapeRho) ion.lost = <span class="k">true</span>  <span class="c">// 越過電極 → 流失</span></pre>
+
+      <h3>噴嘴 loading：原子爐 + 399 nm 光游離</h3>
+      <p>真實離子阱用<strong>原子爐（oven）</strong>噴出一束<strong>中性</strong> Yb 原子橫越阱中心，再用 <strong>399 nm 光游離雷射</strong>（¹S₀→¹P₁ 第一階）在中心把原子游離成 Yb⁺；只有在捕獲區內被游離、且夠慢能被冷卻接住的才留下，其餘穿過後被抽走。模擬忠實重現：</p>
+      <ul>
+        <li>每顆粒子帶 <code>kind: 'neutral' | 'ion'</code>。<strong>中性原子</strong>不受阱力、不被 369 nm 冷卻（躍遷不對）、不參與庫倫力，只做彈道運動，穿過阱後（離開 worldRadius）消失。</li>
+        <li><code>spawnAtoms()</code> 從噴嘴口噴出朝中心、帶熱發散的中性原子束。</li>
+        <li><strong>光游離</strong>：399 nm 開啟時，中心游離區（半徑 <code>piRadius</code>）內的中性原子，每步以機率 \( 1-e^{-\,r_\text{pi}\,dt} \) 轉成離子，之後就受阱力與冷卻。</li>
+        <li><strong>捕獲</strong>：游離後若離子夠慢（徑向振幅 \( v_\perp/\omega_r &lt; \) 逃逸半徑）就被接住、冷卻進鏈；太快或在邊緣被游離的就靠上面的機制散掉。399 nm 關 → 原子完全穿過、抓不到。</li>
+      </ul>
+      <div class="note"><b>流失與載入是同一件事的兩面：</b><em>loading 成功 = 冷卻有沒有在離子逃逸前接住它</em>。把「離子數量」歸 0（空阱）後，可純用噴嘴從零抓起第一顆——正是真實實驗 load 離子的過程。</div>
+    </section>
+
+    <!-- ============ 15 ============ -->
     <section id="code">
-      <h2><span class="n">14</span>程式結構與測試</h2>
+      <h2><span class="n">15</span>程式結構與測試</h2>
       <table>
         <tr><th>檔案</th><th>職責</th></tr>
-        <tr><td><code>physics.js</code></td><td>純物理引擎（瀏覽器 / Node 雙用）：<code>createState</code>、<code>step</code>、<code>conservativeAccel</code>、診斷量 <code>meanKE / temperature / rmsSpeed</code>。所有常數集中在 <code>DEFAULTS</code>。</td></tr>
+        <tr><td><code>physics.js</code></td><td>純物理引擎（瀏覽器 / Node 雙用）：<code>createState</code>、<code>step</code>、<code>conservativeAccel</code>、<code>spawnAtoms</code>（噴嘴載入）、<code>counts</code>（阱中／原子／流失統計）、診斷量 <code>meanKE / temperature / rmsSpeed</code>。所有常數集中在 <code>DEFAULTS</code>。</td></tr>
         <tr><td><code>index.html</code></td><td>介面 + 3D 渲染 + 主迴圈（固定步長累加器）+ 主題系統（專業/童趣）+ 音效。載入 <code>physics.js</code>、<code>keymap.js</code>。</td></tr>
         <tr><td><code>keymap.js</code></td><td>模組化鍵盤快捷鍵（drop-in）。兩張宣告式註冊表 <code>ACTIONS</code> / <code>PARAMS</code>，按 <code>?</code> 的說明自動生成；只操作 DOM 上既有控制項（dispatch <code>input</code>／<code>click</code>），與主程式解耦。對外 <code>window.Keymap.registerAction/registerParam</code> 可擴充。</td></tr>
-        <tr><td><code>test/physics.test.cjs</code></td><td>Node 單元測試：驗證紅失諧冷卻、藍失諧加熱、共振較差、形成線形鏈（離軸 &lt; 18px、不重疊）、極端參數不發散。</td></tr>
+        <tr><td><code>test/physics.test.cjs</code></td><td>Node 單元測試：紅失諧冷卻、藍失諧加熱、共振較差、線形鏈成形、極端參數不發散、micromotion；<strong>離子流失</strong>（q&gt;0.908／Krad≤0 流失、阱夠深零流失、守恆）與<strong>噴嘴載入</strong>（399 開→捕獲、關→穿過）。</td></tr>
       </table>
       <p>主迴圈用<strong>固定步長累加器</strong>：不論畫面幀率如何，物理一律以 <code>dt = 1/60 s</code> 推進，確保行為可重現、與顯示解耦。</p>
       <pre><span class="k">while</span> (acc &gt;= DT &amp;&amp; steps &lt; 6) { Physics.<span class="f">step</span>(state, params, DT); acc -= DT; }</pre>
@@ -402,12 +430,14 @@ prims.<span class="f">sort</span>((a,b) =&gt; b.depth - a.depth);            <sp
 coulomb:300000, softening:12     <span class="c">// 庫倫強度與軟化長度</span>
 gamma:1, dopplerCoef:0.004       <span class="c">// 線寬 Γ 與都普勒靈敏度 k（捕捉速度=γ/k）</span>
 forceScale:260                   <span class="c">// 光壓力尺度 → 冷卻快慢</span>
-noiseAmp:7.5                     <span class="c">// 反衝擴散 → 決定都普勒極限地板</span></pre>
+noiseAmp:7.5                     <span class="c">// 反衝擴散 → 決定都普勒極限地板</span>
+loss:true, escapeRho:100, ejectK:50    <span class="c">// 流失：逃逸半徑、阱不穩定向外甩出</span>
+loading:true, piLaser:true, piRadius:40, piRate:1.8  <span class="c">// 噴嘴載入：399nm 光游離</span></pre>
     </section>
 
-    <!-- ============ 15 ============ -->
+    <!-- ============ 16 ============ -->
     <section id="real">
-      <h2><span class="n">15</span>對應真實實驗</h2>
+      <h2><span class="n">16</span>對應真實實驗</h2>
       <table>
         <tr><th>模擬中的東西</th><th>真實離子阱量子電腦</th></tr>
         <tr><td>一條離子鏈</td><td>qubit 暫存器（每顆離子 = 一個量子位元）</td></tr>

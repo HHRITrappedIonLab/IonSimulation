@@ -293,7 +293,7 @@
         </div>
         <div class="row">
           <label>離子數量 <span class="val" id="ionCountLab">6 顆</span></label>
-          <input type="range" id="ionCount" min="1" max="14" step="1" value="6" />
+          <input type="range" id="ionCount" min="0" max="14" step="1" value="6" />
         </div>
         <div class="row">
           <label>雷射方向（點一點開關）<span class="val" id="beamLab">6 道</span></label>
@@ -355,6 +355,16 @@
           <div class="rf-readout" id="secularReadout">secular 頻率 …</div>
           <div class="legend" style="margin-top:6px"><span class="pill" id="microReadout">離軸 0.0 px · micromotion：無</span></div>
         </div>
+      </div>
+
+      <div class="card">
+        <h3>🧪 離子源 · Loading</h3>
+        <div class="btns">
+          <button class="act go" id="loadBtn">🧪 噴原子</button>
+          <button class="act ghost" id="clearBtn">🗑️ 清空阱</button>
+          <button class="act ghost on" id="piBtn" title="399 nm 光游離雷射開關">🟣 PI 399nm：開</button>
+        </div>
+        <div class="legend tip-hint" style="margin-top:8px"><span class="pill">💡 原子爐＋399 nm 光游離：把離子數量拉到 0 重來＝空阱，再「噴原子」用噴嘴抓第一顆！</span></div>
       </div>
 
       <div class="card">
@@ -441,6 +451,7 @@
   // 線形阱（trapKx 弱、trapKy/Kz 強，已是 physics.js 預設）→ 離子排成立體線形離子鏈
   const params = Physics.makeParams({ detuning:-0.5, intensity:1.5, trapModel:'rf' });
   let state = Physics.createState(6, { initialSpeed:120 });
+  let prevTrapped = state.ions.length;   // 上一幀阱中離子數（偵測捕獲↑/流失↓ 提示音）
   let running = true;
   let muted = false;
   let theme = 'pro';   // 'pro'（科研儀器風）| 'kids'（童趣風）
@@ -513,6 +524,7 @@
   function resetIons(n) {
     state = Physics.createState(n, { initialSpeed:120 });
     tempHist = []; simClock = 0; coolStart = 0; coldTimer = 0; won = false;
+    prevTrapped = state.ions.length;
     $('win').classList.remove('show');
   }
 
@@ -634,6 +646,19 @@
   });
   $('heatBtn').addEventListener('click', () => { ensureAudio(); heat(); });
   $('resetBtn').addEventListener('click', () => { ensureAudio(); resetIons(parseInt(ionCount.value,10)); blip(523,0.06); });
+  // 噴嘴 loading：噴中性原子束、清空阱、399 nm 光游離雷射開關
+  $('loadBtn').addEventListener('click', () => { ensureAudio(); Physics.spawnAtoms(state, params, 7, Math.random); blip(300, 0.04); });
+  $('clearBtn').addEventListener('click', () => {
+    ensureAudio(); state.ions.length = 0; state.lost = 0; prevTrapped = 0;
+    coldTimer = 0; won = false; $('win').classList.remove('show'); blip(200, 0.05);
+  });
+  $('piBtn').addEventListener('click', () => {
+    ensureAudio();
+    params.piLaser = !params.piLaser;
+    $('piBtn').classList.toggle('on', params.piLaser);
+    $('piBtn').textContent = params.piLaser ? '🟣 PI 399nm：開' : '⚫ PI 399nm：關';
+    blip(params.piLaser ? 460 : 300, 0.05);
+  });
   $('pauseBtn').addEventListener('click', () => {
     ensureAudio();
     running = !running; $('pauseBtn').textContent = running ? '⏸️ 暫停' : '▶️ 繼續';
@@ -708,6 +733,7 @@
 
     // 雷射光束（加色發光，畫在最底）
     drawBeams3D();
+    if (params.loading) drawNozzle();
 
     // 收集所有立體基元（電極棒段 + 端蓋 + 離子），依深度排序後由遠到近畫
     const prims = [];
@@ -754,6 +780,32 @@
       ctx.beginPath(); ctx.moveTo(s.sx,s.sy); ctx.lineTo(e.sx,e.sy); ctx.stroke();
       ctx.fillStyle = col(0.85);
       ctx.beginPath(); ctx.arc(s.sx, s.sy, Math.max(4,7*s.scale), 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 噴嘴原子爐 + 原子束 + 399 nm 中心游離區
+  function drawNozzle() {
+    const o = project(params.nozzleX, params.nozzleY, params.nozzleZ), c = project(0,0,0);
+    ctx.save();
+    // 原子束（噴嘴 → 阱中心），399 開啟時略亮
+    const beamA = params.piLaser ? 0.24 : 0.12;
+    const grad = ctx.createLinearGradient(o.sx,o.sy,c.sx,c.sy);
+    grad.addColorStop(0,`rgba(188,204,232,${beamA})`); grad.addColorStop(1,'rgba(188,204,232,0)');
+    ctx.strokeStyle = grad; ctx.lineWidth = Math.max(2, 9*o.scale); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(o.sx,o.sy); ctx.lineTo(c.sx,c.sy); ctx.stroke();
+    // 噴嘴管口
+    const r = 14*o.scale;
+    ctx.fillStyle = '#5c6474'; ctx.strokeStyle = '#9aa3b5'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(o.sx,o.sy,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2c323d'; ctx.beginPath(); ctx.arc(o.sx,o.sy,r*0.48,0,Math.PI*2); ctx.fill();
+    if (theme === 'pro') { ctx.fillStyle='rgba(200,210,230,0.78)'; ctx.font=`${Math.max(9,12*o.scale)|0}px ui-sans-serif,sans-serif`; ctx.textAlign='center'; ctx.fillText('oven', o.sx, o.sy + r + 13*o.scale); }
+    // 399 nm 游離區（阱中心紫色光暈，開啟時）
+    if (params.piLaser) {
+      const pr = params.piRadius * c.scale;
+      const gg = ctx.createRadialGradient(c.sx,c.sy,1,c.sx,c.sy,pr);
+      gg.addColorStop(0,'rgba(150,90,255,0.18)'); gg.addColorStop(1,'rgba(150,90,255,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(c.sx,c.sy,pr,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
   }
@@ -805,6 +857,17 @@
       g.addColorStop(0,'rgba(255,150,125,0.95)'); g.addColorStop(1,'rgba(255,85,60,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx,sy,R*1.7,0,Math.PI*2); ctx.fill();
       ctx.fillStyle = '#ff6a4a'; ctx.beginPath(); ctx.arc(sx,sy,R*0.8,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    // 中性原子（尚未被 399 nm 游離）：暗灰小點、無螢光輝光
+    if (ion.kind === 'neutral') {
+      ctx.save();
+      ctx.globalAlpha = clamp(fogB(pr.depth), 0.38, 0.85);
+      const g = ctx.createRadialGradient(sx,sy,0.5,sx,sy,R*0.95);
+      g.addColorStop(0,'rgba(205,214,228,0.92)'); g.addColorStop(1,'rgba(150,165,190,0.12)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx,sy,R*0.6,0,Math.PI*2); ctx.fill();
       ctx.restore();
       return;
     }
@@ -923,10 +986,14 @@
 
   // ---------- 動態提示 ----------
   let _lastHint = '', _lastBanner = '';
-  function updateHint(rms) {
+  function updateHint(rms, cts) {
     const d = params.detuning, s = params.intensity, nb = params.beams.length;
     let msg, ban;
-    if (s <= 0) { msg = '雷射<b>關掉了</b>！把「雷射強度」往右調，光才能推離子 🔦'; ban='雷射關閉中：離子不會變冷'; }
+    if (cts && cts.trapped === 0) {   // 阱中無離子：載入中 / 空阱（不可顯示結晶/勝利訊息）
+      if (cts.neutral > 0) { msg = '原子束噴出中！<b>399 nm 光游離雷射</b>會在阱中心把中性原子變成離子，看看有沒有被接住 🧪'; ban='載入中…原子正穿過阱'; }
+      else { msg = '阱是<b>空的</b>。按「🧪 噴原子」用噴嘴載入離子（記得 399 nm 要「開」）✨'; ban='空阱：用噴嘴載入離子'; }
+    }
+    else if (s <= 0) { msg = '雷射<b>關掉了</b>！把「雷射強度」往右調，光才能推離子 🔦'; ban='雷射關閉中：離子不會變冷'; }
     else if (nb === 0) { msg = '所有<b>雷射方向都關了</b>！至少打開一邊試試看 ↔️'; ban='沒有任何雷射方向'; }
     else if (d > 0.2) { msg = '雷射<b>太藍</b>了！看到離子越來越快了嗎？🔥 把顏色滑桿往「紅」拉～'; ban='雷射太藍 → 離子正在被加熱！'; }
     else if (d >= -0.15) { msg = '剛好<b>對準</b>顏色時，冷卻效果不好（離子被亂打）。往「紅」一點點看看～'; ban='顏色剛好對準：冷卻效果不佳'; }
@@ -941,7 +1008,6 @@
   // ---------- 主迴圈 ----------
   let lastTs = 0, acc = 0, histAcc = 0;
   let smoothRms = -1, stateLevel = 2, hudAcc = 0;   // 平滑 rms + 狀態遲滯 + 數字讀數節流
-  let prevIonN = state.ions.length;                 // 上一幀阱中離子數（用來偵測流失）
   const DT = 1/60;
   function loop(ts) {
     if (!lastTs) lastTs = ts;
@@ -955,10 +1021,12 @@
     }
     updateConfetti(frameDt);
 
-    // 離子流失偵測（沒抓住就散掉）→ 提示音；上升（重來/載入）時不誤觸
-    const nIon = state.ions.length;
-    if (nIon < prevIonN) blip(165, 0.09);
-    prevIonN = nIon;
+    // 阱中離子數變化 → 捕獲(↑)/流失(↓) 提示音；重來/清空會自行同步 prevTrapped 避免誤觸
+    const cts = Physics.counts(state);
+    const nIon = cts.trapped;
+    if (nIon < prevTrapped) blip(165, 0.09);        // 流失
+    else if (nIon > prevTrapped) blip(880, 0.05);   // 捕獲
+    prevTrapped = nIon;
 
     // 量測：用低通平滑掉 RF micromotion 的快速抖動（代表 secular 溫度）
     // → 溫度 / 狀態 / 提示就不會在「晶體↔液態」之間亂跳
@@ -982,7 +1050,9 @@
         $('thermoNum').textContent = Math.round(heatFrac*100);
       }
       $('speedVal').textContent = Math.round(rms);
-      $('ionLive').innerHTML = `阱中 <b>${nIon}</b> 顆` + (state.lost ? ` · 流失 ${state.lost}` : '');
+      $('ionLive').innerHTML = `阱中 <b>${cts.trapped}</b> 顆`
+        + (cts.neutral ? ` · 原子 ${cts.neutral}` : '')
+        + (cts.lost ? ` · 流失 ${cts.lost}` : '');
       if (params.trapModel === 'rf') {
         const rr = Physics.radialRMS(state), lvl = rr < 3 ? '無' : rr < 12 ? '弱' : '強';
         $('microReadout').textContent = `離軸 ${rr.toFixed(1)} px · micromotion：${lvl}`;
@@ -995,7 +1065,10 @@
     const pro = theme === 'pro';
     let label = stateLevel === 0 ? (pro?'晶體 crystal':'💎 晶體') : stateLevel === 1 ? (pro?'液態 liquid':'💧 液態') : (pro?'氣態 gas':'🔥 氣態');
     let color = stateLevel === 0 ? '#5bd6ff' : stateLevel === 1 ? '#7bff8a' : '#ff8a5a';
-    if (nIon === 0) { label = pro ? '空阱 empty' : '空阱'; color = '#8a98b8'; }   // 離子全流失
+    if (nIon === 0) {   // 阱中無離子：載入中(有中性原子) / 空阱
+      label = cts.neutral ? '載入中…' : (pro ? '空阱 empty' : '空阱');
+      color = cts.neutral ? '#b59aff' : '#8a98b8';
+    }
     const sb = $('stateBadge'); sb.textContent = label; sb.style.color = color;
 
     // 溫度歷史（每 ~0.1s）
@@ -1003,7 +1076,7 @@
 
     // 勝利判定（持續夠冷 1.2 秒）
     if (running) {
-      if (rms < 15 && params.intensity > 0 && params.beams.length > 0 && state.ions.length > 0) {
+      if (rms < 15 && params.intensity > 0 && params.beams.length > 0 && cts.trapped > 0) {
         coldTimer += frameDt;
         if (coldTimer > 1.2 && !won) {
           won = true;
@@ -1020,7 +1093,7 @@
     const cur = won ? (Math.max(0, (simClock - coolStart))) : (simClock - coolStart);
     $('timeVal').innerHTML = `${(won? (bestTime??cur):cur).toFixed(1)}s <span style="font-size:11px;color:#9fb0e8">/ ${bestTime!=null?bestTime.toFixed(1)+'s':'--'}</span>`;
 
-    updateHint(rms);
+    updateHint(rms, cts);
     if (autoRotate && !pointerDown) camYaw += frameDt * 0.3;   // 自動緩慢旋轉
     render();
     drawGraph();

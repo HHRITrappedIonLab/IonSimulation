@@ -131,5 +131,32 @@ const lossOff = (function () {
 })();
 check('關閉 loss 時不移除離子（仍 6 顆）', lossOff.n === 6, `剩 ${lossOff.n}`);
 
+// 11) 空阱起始
+const empty = P.createState(0);
+check('空阱起始 createState(0) → 0 顆', empty.ions.length === 0 && P.counts(empty).trapped === 0);
+
+// 12) 噴嘴 loading：空阱 + 399 PI 開 → 中性原子被游離、捕獲成離子
+const loadOn = (function () {
+  const rng = P.mulberry32(11), state = P.createState(0, { rng });
+  const params = P.makeParams({ detuning: -0.5, intensity: 2, trapModel: 'rf', piLaser: true });
+  P.spawnAtoms(state, params, 16, rng);
+  for (let i = 0; i < 60 * 5; i++) P.step(state, params, 1 / 60, rng);
+  return P.counts(state);
+})();
+console.log(`\nLoading PI 開：阱中 ${loadOn.trapped} 顆、原子 ${loadOn.neutral}、流失 ${loadOn.lost}`);
+check('399 PI 開 → 噴嘴成功載入離子（阱中 ≥ 1）', loadOn.trapped >= 1, `阱中 ${loadOn.trapped}`);
+
+// 13) PI 關 → 原子穿過阱、抓不到任何離子
+const loadOff = (function () {
+  const rng = P.mulberry32(11), state = P.createState(0, { rng });
+  const params = P.makeParams({ detuning: -0.5, intensity: 2, trapModel: 'rf', piLaser: false });
+  P.spawnAtoms(state, params, 16, rng);
+  for (let i = 0; i < 60 * 5; i++) P.step(state, params, 1 / 60, rng);
+  return P.counts(state);
+})();
+console.log(`Loading PI 關：阱中 ${loadOff.trapped} 顆、原子 ${loadOff.neutral}`);
+check('399 PI 關 → 抓不到離子（阱中 = 0）', loadOff.trapped === 0);
+check('PI 關 → 原子最終全部穿過離開（neutral = 0）', loadOff.neutral === 0);
+
 console.log(`\n=== 結果：${failures === 0 ? '全部通過 🎉' : failures + ' 項失敗'} ===`);
 process.exit(failures === 0 ? 0 : 1);

@@ -50,6 +50,15 @@
     escapeRho: 100,      // 離軸(徑向)逃逸半徑 (px)：離軸超過 → 視為撞上/越過電極 → 流失（≈ 電極孔徑 ROD_R）
     cullRadius: 380,     // 流失離子彈道飛出此半徑後從陣列移除 (px，畫面外)
     ejectK: 50,          // 阱不穩定(Mathieu q≥0.908 或 贗位能 Krad≤0)時的向外反束縛剛性 → 指數甩出離子
+
+    // ---- 離子源 / loading（噴嘴原子爐 + 399 nm 光游離）----
+    loading: true,       // 啟用中性原子 / 光游離流程
+    piLaser: true,       // 399 nm 光游離雷射開關（關閉時原子穿過不會被游離）
+    piRadius: 40,        // 阱中心游離區半徑 (px)：399+369 光重疊、原子在此被游離成離子
+    piRate: 1.8,         // 游離率 (1/s)：原子在游離區內每秒轉成離子的機率 ~ 1−e^(−rate·t)（部分原子會穿過）
+    nozzleX: -34, nozzleY: -168, nozzleZ: -42,   // 噴嘴口位置（阱外斜下方，束流經電極間隙穿過中心）
+    atomSpeed: 150,      // 中性原子束速率 (px/s)（夠慢 → 游離後能被捕獲）
+    atomSpread: 0.16,    // 原子束發散（束方向的隨機擾動）
   });
 
   // 六道光束：±x(左右/軸向)、±y(上下)、±z(前後)。n = 傳播方向(指向中心)。
@@ -92,7 +101,7 @@
       ions.push({
         x: p.x * rad * 0.45, y: p.y * rad * 0.18, z: p.z * rad * 0.18,
         vx: v.x * speed, vy: v.y * speed, vz: v.z * speed,
-        flash: 0,
+        flash: 0, kind: 'ion',
       });
     }
     return { ions, clock: 0, lost: 0 };
@@ -118,7 +127,7 @@
     for (let j = 0; j < ions.length; j++) {
       if (j === i) continue;
       const o = ions[j];
-      if (o.lost) continue;            // 已流失的離子離開了，不再貢獻庫倫力
+      if (o.lost || o.kind === 'neutral') continue;   // 已流失或中性原子：不貢獻庫倫力
       const dx = ion.x - o.x, dy = ion.y - o.y, dz = ion.z - o.z;
       const r2 = dx * dx + dy * dy + dz * dz + soft2;
       const r = Math.sqrt(r2);
@@ -166,7 +175,7 @@
       const rfCos = rf ? Math.cos(Omega * state.clock) : 0;
       // (1) 保守力 → 半隱式 Euler（RF 模式帶時變四極力；阱不穩定時加向外反束縛）
       for (let i = 0; i < ions.length; i++) {
-        if (ions[i].lost) continue;                  // 已流失：彈道飛出，不再受阱/庫倫力
+        if (ions[i].lost || ions[i].kind === 'neutral') continue;   // 已流失/中性原子：彈道飛行，不受阱與庫倫力
         conservativeAccel(state, i, p, acc, rf, A, rfCos);
         let ay = acc.ay, az = acc.az;
         if (unstable) { ay += ejectK * ions[i].y; az += ejectK * ions[i].z; }   // 反束縛 → 指數甩出
@@ -175,7 +184,7 @@
       // (2) 雷射冷卻：平均光壓 + 反衝擴散（已流失的離子不再被冷卻）
       for (let i = 0; i < ions.length; i++) {
         const ion = ions[i];
-        if (ion.lost) continue;
+        if (ion.lost || ion.kind === 'neutral') continue;   // 中性原子不被 369 nm 冷卻（躍遷不對）
         let ax = 0, ay = 0, az = 0, Rtot = 0;
         for (let b = 0; b < beams.length; b++) {
           const n = beams[b];
@@ -205,6 +214,7 @@
         const sp2 = ion.vx * ion.vx + ion.vy * ion.vy + ion.vz * ion.vz;
         if (sp2 > vmax * vmax) { const k = vmax / Math.sqrt(sp2); ion.vx *= k; ion.vy *= k; ion.vz *= k; }
         ion.x += ion.vx * h; ion.y += ion.vy * h; ion.z += ion.vz * h;
+        if (ion.kind === 'neutral') continue;   // 中性原子：直線穿過阱，不受逃逸/邊界（離開時於 cull 階段移除）
         if (ion.lost) continue;            // 流失離子：自由飛出，稍後越過 cullRadius 才移除
         // 離軸(徑向)距離超過逃逸半徑 → 越過電極、離開捕獲區 → 流失（沒抓住就散掉）
         if (p.loss && (ion.y * ion.y + ion.z * ion.z) > rho2max) { ion.lost = true; continue; }
@@ -219,40 +229,80 @@
       }
       if (rf) state.clock += h;            // 推進 RF 相位
     }
-    // 已彈道飛出 cullRadius 的流失離子 → 從模擬移除並累計流失數
-    if (p.loss) {
-      const cull2 = p.cullRadius * p.cullRadius;
-      for (let i = ions.length - 1; i >= 0; i--) {
+    // 光游離：阱中心 piRadius 游離區內的中性原子，399 nm 開啟時依機率轉成離子（之後就受阱力與冷卻）
+    if (p.loading && p.piLaser && p.piRate > 0) {
+      const pr2 = p.piRadius * p.piRadius, prob = p.piRate * dt;
+      for (let i = 0; i < ions.length; i++) {
         const o = ions[i];
-        if (o.lost && (o.x * o.x + o.y * o.y + o.z * o.z) > cull2) { ions.splice(i, 1); state.lost++; }
+        if (o.kind !== 'neutral') continue;
+        if ((o.x * o.x + o.y * o.y + o.z * o.z) < pr2 && rng() < prob) { o.kind = 'ion'; o.flash = 1; }
       }
+    }
+    // 移除：流失離子飛出 cullRadius、或未被游離的中性原子穿過阱後離開 worldRadius
+    const cull2 = p.cullRadius * p.cullRadius, R2 = p.worldRadius * p.worldRadius;
+    for (let i = ions.length - 1; i >= 0; i--) {
+      const o = ions[i];
+      const r2 = o.x * o.x + o.y * o.y + o.z * o.z;
+      if (o.lost) { if (p.loss && r2 > cull2) { ions.splice(i, 1); state.lost++; } }
+      else if (o.kind === 'neutral' && r2 > R2) { ions.splice(i, 1); }
     }
     for (let i = 0; i < ions.length; i++) if (ions[i].flash > 0) ions[i].flash = Math.max(0, ions[i].flash - dt * 4);
   }
 
-  // ---- 診斷量 ----
+  // ---- 診斷量（只計入「阱中的離子」：排除中性原子與已流失離子）----
   function meanKE(state) {
-    let sum = 0;
-    for (const io of state.ions) sum += 0.5 * (io.vx * io.vx + io.vy * io.vy + io.vz * io.vz);
-    return state.ions.length ? sum / state.ions.length : 0;
+    let sum = 0, n = 0;
+    for (const io of state.ions) { if (io.kind === 'neutral' || io.lost) continue; sum += 0.5 * (io.vx * io.vx + io.vy * io.vy + io.vz * io.vz); n++; }
+    return n ? sum / n : 0;
   }
   function temperature(state) { return meanKE(state) / 500; }
   function rmsSpeed(state) {
-    let sum = 0;
-    for (const io of state.ions) sum += io.vx * io.vx + io.vy * io.vy + io.vz * io.vz;
-    return Math.sqrt(state.ions.length ? sum / state.ions.length : 0);
+    let sum = 0, n = 0;
+    for (const io of state.ions) { if (io.kind === 'neutral' || io.lost) continue; sum += io.vx * io.vx + io.vy * io.vy + io.vz * io.vz; n++; }
+    return Math.sqrt(n ? sum / n : 0);
   }
 
   // 離軸距離的 RMS（= micromotion 強度的指標；離 RF 零點越遠抖越大）
   function radialRMS(state) {
-    let sum = 0;
-    for (const io of state.ions) sum += io.y * io.y + io.z * io.z;
-    return Math.sqrt(state.ions.length ? sum / state.ions.length : 0);
+    let sum = 0, n = 0;
+    for (const io of state.ions) { if (io.kind === 'neutral' || io.lost) continue; sum += io.y * io.y + io.z * io.z; n++; }
+    return Math.sqrt(n ? sum / n : 0);
+  }
+
+  // 噴嘴原子爐：噴出 count 顆中性 Yb 原子，速度朝阱中心 + 一點發散與位置擾動
+  function spawnAtoms(state, params, count, rng) {
+    rng = rng || Math.random;
+    const p = params, n = count || 1;
+    const ox = p.nozzleX, oy = p.nozzleY, oz = p.nozzleZ;
+    const L = Math.sqrt(ox * ox + oy * oy + oz * oz) || 1;
+    const bx = -ox / L, by = -oy / L, bz = -oz / L;     // 指向阱中心的束方向
+    for (let i = 0; i < n; i++) {
+      const sp = p.atomSpeed * (0.8 + 0.4 * rng());
+      const d = randDir(rng), k = p.atomSpread;
+      let vx = bx + d.x * k, vy = by + d.y * k, vz = bz + d.z * k;
+      const vl = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1;
+      state.ions.push({
+        x: ox + (rng() - 0.5) * 16, y: oy + (rng() - 0.5) * 16, z: oz + (rng() - 0.5) * 16,
+        vx: vx / vl * sp, vy: vy / vl * sp, vz: vz / vl * sp,
+        flash: 0, kind: 'neutral',
+      });
+    }
+    return state;
+  }
+
+  // 統計：阱中離子數 / 中性原子數 / 累計流失數
+  function counts(state) {
+    let trapped = 0, neutral = 0;
+    for (const io of state.ions) {
+      if (io.kind === 'neutral') neutral++;
+      else if (!io.lost) trapped++;
+    }
+    return { trapped, neutral, lost: state.lost || 0 };
   }
 
   const Physics = {
     DEFAULTS, BEAMS_6, mulberry32, randDir,
-    createState, step, conservativeAccel, secularFreqs,
+    createState, step, conservativeAccel, secularFreqs, spawnAtoms, counts,
     meanKE, temperature, rmsSpeed, radialRMS,
     makeParams(overrides) {
       return Object.assign({}, DEFAULTS,

@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-23
+
+### Added
+- Ion loading via an atomic-oven nozzle: a 399 nm photoionization laser ionizes the neutral Yb atom beam at the trap centre; atoms ionized inside the capture region (and cooled before they escape) are caught, the rest pass through. Controls to spawn atoms, clear the trap, and toggle the PI laser — plus an empty-trap start (the ion-count slider now reaches 0) so you can catch the first ion from scratch.
+- Neutral atoms (`kind: 'neutral' | 'ion'`), photoionization, and `spawnAtoms` / `counts` helpers in `physics.js`; kind-aware diagnostics (temperature / rms count only trapped ions).
+- Nozzle, atomic-beam, and 399 nm ionization-region rendering; neutral atoms drawn dim; a live "trapped · atoms · lost" readout; capture / loss cue sounds.
+- Loading unit tests: PI on captures, PI off passes through, and empty-start.
+- Physics doc §14 "離子流失與載入" — trap depth / stability loss and oven + photoionization loading.
+
+### Changed
+- An empty or loading trap no longer reads as a crystal or triggers a win; the status badge shows 載入中… / 空阱.
+- The loading controls live in a compact card placed to balance the two-column panel (no net page-height increase).
+
 ## [1.3.0] - 2026-06-23
 
 ### Added
