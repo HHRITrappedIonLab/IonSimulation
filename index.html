@@ -182,16 +182,17 @@
   /* 雷射方向：3D 座標軸排列（x 左右、y 上下、z 前後＝斜向深度） */
   .beams3d { position:relative; width:164px; height:132px; margin:8px auto 2px; }
   .bax { position:absolute; background:var(--line); }
-  .bax-x { left:13%; right:13%; top:50%; height:2px; margin-top:-1px; }
-  .bax-y { top:12%; bottom:12%; left:50%; width:2px; margin-left:-1px; }
-  .bax-z { left:50%; top:50%; width:120px; height:2px; transform:translate(-50%,-50%) rotate(-36deg); }
+  /* 軸向對齊 3D 視角：x=鏈軸(左下↔右上)、y=垂直、z=深度(左上↔右下) */
+  .bax-x { left:50%; top:50%; width:122px; height:2px; transform:translate(-50%,-50%) rotate(-13deg); }
+  .bax-y { top:13%; bottom:13%; left:50%; width:2px; margin-left:-1px; }
+  .bax-z { left:50%; top:50%; width:122px; height:2px; transform:translate(-50%,-50%) rotate(17deg); }
   .beams3d-mid { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:22px; z-index:1; }
   .beams3d .beam-btn { position:absolute; width:36px; height:36px; transform:translate(-50%,-50%); z-index:2; }
   .beams3d .beam-btn.bpos-f { width:43px; height:43px; }            /* 前（近）大一點 */
   .beams3d .beam-btn.bpos-b { width:30px; height:30px; opacity:.9; } /* 後（遠）小一點 */
-  .bpos-u { left:50%; top:12%; }  .bpos-d { left:50%; top:88%; }
-  .bpos-l { left:13%; top:50%; }  .bpos-r { left:87%; top:50%; }
-  .bpos-b { left:79%; top:24%; }  .bpos-f { left:21%; top:76%; }
+  .bpos-u { left:50%; top:13%; }  .bpos-d { left:50%; top:87%; }
+  .bpos-l { left:14%; top:60%; }  .bpos-r { left:86%; top:40%; }
+  .bpos-b { left:15%; top:37%; }  .bpos-f { left:85%; top:63%; }
 
   .beam-btn { width:100%; height:100%; border-radius:12px; border:1px solid var(--line);
               background:#0d1240; color:var(--muted); font-size:20px; cursor:pointer;
@@ -251,7 +252,7 @@
 </style>
 </head>
 <body class="pro">
-  <div class="app-ver" id="appVer">v1.5.3</div>
+  <div class="app-ver" id="appVer">v1.5.4</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
@@ -327,12 +328,12 @@
           <div class="beams3d">
             <i class="bax bax-x"></i><i class="bax bax-y"></i><i class="bax bax-z"></i>
             <span class="beams3d-mid">⚛️</span>
-            <button class="beam-btn on bpos-u" data-beam="U" title="上方雷射（+y）">⬇️</button>
-            <button class="beam-btn on bpos-d" data-beam="D" title="下方雷射（−y）">⬆️</button>
-            <button class="beam-btn on bpos-l" data-beam="L" title="左方雷射（−x）">➡️</button>
-            <button class="beam-btn on bpos-r" data-beam="R" title="右方雷射（+x）">⬅️</button>
-            <button class="beam-btn on z-beam bpos-b" data-beam="B" title="後方雷射（+z／遠）">後</button>
-            <button class="beam-btn on z-beam bpos-f" data-beam="F" title="前方雷射（−z／近）">前</button>
+            <button class="beam-btn on bpos-u" data-beam="U" title="上方雷射（+y，從上往下打）">⬇️</button>
+            <button class="beam-btn on bpos-d" data-beam="D" title="下方雷射（−y，從下往上打）">⬆️</button>
+            <button class="beam-btn on bpos-l" data-beam="L" title="沿鏈軸雷射（−x，左下端）">↗️</button>
+            <button class="beam-btn on bpos-r" data-beam="R" title="沿鏈軸雷射（+x，右上端）">↙️</button>
+            <button class="beam-btn on z-beam bpos-b" data-beam="B" title="後方雷射（+z／遠，左上）">後</button>
+            <button class="beam-btn on z-beam bpos-f" data-beam="F" title="前方雷射（−z／近，右下）">前</button>
           </div>
         </div>
       </div>
