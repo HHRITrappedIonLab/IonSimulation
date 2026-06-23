@@ -49,7 +49,6 @@
     loss: true,          // 開啟：離開捕獲區的離子會「散掉」並從模擬移除
     escapeRho: 78,       // 離軸(徑向)逃逸半徑 (px)：離軸超過 → 視為撞上/越過電極 → 流失（較小 → 較易逃逸）
     cullRadius: 380,     // 流失離子彈道飛出此半徑後從陣列移除 (px，畫面外)
-    ejectK: 90,          // 阱不穩定(Mathieu q≥0.908 或 贗位能 Krad≤0)時的向外反束縛剛性 → 指數甩出離子（越大甩越快）
 
     // ---- 離子源 / loading（噴嘴原子爐 + 399 nm 光游離）----
     loading: true,       // 啟用中性原子 / 光游離流程
@@ -167,20 +166,22 @@
     const Omega = rf ? p.rfOmega : 0, A = rf ? p.rfAmp : 0;
     if (state.clock == null) state.clock = 0;
     if (state.lost == null) state.lost = 0;
-    // 阱徑向是否不穩定（Mathieu q≥0.908 或 贗位能 Krad≤0）→ 開啟流失時把離子甩出捕獲區
+    // 阱不穩定 = Mathieu 方程無穩定解的區域（q≥0.908 或贗位能 Krad≤0）。真解在此指數發散，
+    // 但 symplectic(半隱式)積分會壓抑這個參數共振發散、被冷卻蓋過；故在不穩定區補回徑向指數成長：
+    // 抵消束縛 Krad 後淨向外，發散率 growth 隨「不穩定深度」(q−0.908 或 −Krad)增大 → 越深越快被甩出。
     const sf = secularFreqs(p);
     const unstable = p.loss ? !sf.stable : false;
-    // 甩出強度蓋過徑向束縛 Krad（拉高 V_RF / 降頻會同時加大 Krad）→ 不穩定時必定淨向外甩出
-    const ejectK = unstable ? (Math.max(0, sf.Krad) + (p.ejectK || 0)) : 0;
+    const growth = unstable ? (4 + 14 * Math.max(0, sf.q - 0.908) + Math.max(0, -sf.Krad)) : 0;
+    const ejectK = unstable ? (Math.max(0, sf.Krad) + growth) : 0;
 
     for (let st = 0; st < sub; st++) {
       const rfCos = rf ? Math.cos(Omega * state.clock) : 0;
-      // (1) 保守力 → 半隱式 Euler（RF 模式帶時變四極力；阱不穩定時加向外反束縛）
+      // (1) 保守力 → 半隱式 Euler（RF 模式帶時變四極力；不穩定區會自然指數發散 → 流失）
       for (let i = 0; i < ions.length; i++) {
         if (ions[i].lost || ions[i].kind === 'neutral') continue;   // 已流失/中性原子：彈道飛行，不受阱與庫倫力
         conservativeAccel(state, i, p, acc, rf, A, rfCos);
         let ay = acc.ay, az = acc.az;
-        if (unstable) { ay += ejectK * ions[i].y; az += ejectK * ions[i].z; }   // 反束縛 → 指數甩出
+        if (unstable) { ay += ejectK * ions[i].y; az += ejectK * ions[i].z; }   // 補回 Mathieu 不穩定區的指數發散
         ions[i].vx += acc.ax * h; ions[i].vy += ay * h; ions[i].vz += az * h;
       }
       // (2) 雷射冷卻：平均光壓 + 反衝擴散（已流失的離子不再被冷卻）

@@ -5,6 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-06-23
+
+### Changed
+- Tied the instability ejection honestly to the Mathieu stability boundary: ions are ejected only in the unstable region (q ≥ 0.908 or Krad ≤ 0), and the divergence rate now scales with how far past the boundary you are (deeper → faster), matching the stability diagram. The stable region keeps every ion. Documented the numerical reason in §14 (the symplectic integrator suppresses the real parametric divergence, which this restores).
+
 ## [1.6.0] - 2026-06-23
 
 ### Changed

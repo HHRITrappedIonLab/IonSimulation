@@ -397,7 +397,8 @@ prims.<span class="f">sort</span>((a,b) =&gt; b.depth - a.depth);            <sp
         <li><strong>徑向不束縛</strong>：當贗位能剛性 \( K_\text{rad} = A^2/2\Omega^2 - K_x/2 \le 0 \)（RF 太弱或 DC 散焦太強），徑向沒有回復力。</li>
         <li><strong>過熱／雜散場</strong>：把離子加熱到振幅超過 \( R_\text{trap} \)，或強雜散 DC 場把平衡點推進電極。</li>
       </ul>
-      <p><code>step()</code> 每步用 <code>secularFreqs</code> 判定阱是否不穩定；不穩定時對每顆離子加一個<strong>向外反束縛</strong>加速度 \( \propto +K_\text{eject}\,\rho \)（重現虛頻率的指數發散；RF 模式本身也會自然發散）。一旦離軸距離 \( \rho=\sqrt{y^2+z^2} \) 超過逃逸半徑 <code>escapeRho</code>，該離子標記為 <code>lost</code> → 改為彈道飛行（不再受阱力／冷卻／庫倫力）→ 飛出 <code>cullRadius</code> 後移除並累計流失數。<strong>預設仍抓得住</strong>：正常冷卻時離子離軸 \( \lesssim 62 \) px &lt; 逃逸半徑（\( \approx 78 \) px），所以一顆都不掉；但只要把 <strong>RF 電壓調高</strong>、<strong>RF 頻率調低</strong>（兩者都把 \( q \) 推過 0.908）或<strong>雜散場調大</strong>（把離子推離 RF 零點超過逃逸半徑），離子就會被甩出流失。</p>
+      <p><strong>數值上的細節（重要）：</strong>不穩定區的真解是<em>指數發散</em>，但本模擬的 <strong>symplectic（半隱式 Euler）積分會守住一個修正能量、壓抑這個參數共振發散</strong>，結果會被雷射冷卻蓋過——光靠顯式積分，離子不會如實飛出。因此 <code>step()</code> 每步用 <code>secularFreqs</code> 判定是否落在 Mathieu 不穩定區（\( q\ge 0.908 \) 或 \( K_\text{rad}\le 0 \)），在該區<strong>補回被壓抑的徑向指數成長</strong>：抵消束縛 \( K_\text{rad} \) 後淨向外，發散率 \( \propto (q-0.908) \)（或 \( -K_\text{rad} \)）——<strong>越深入不穩定區、甩得越快</strong>，邊界外則完全不加（穩定區一顆不掉）。一旦離軸距離 \( \rho=\sqrt{y^2+z^2} \) 超過逃逸半徑 <code>escapeRho</code>，離子標記為 <code>lost</code> → 彈道飛出 → 越過 <code>cullRadius</code> 後移除並累計流失數。</p>
+      <p><strong>怎麼觸發：</strong>把 <strong>RF 電壓調高</strong>、<strong>RF 頻率調低</strong>（兩者都把 \( q \) 推過 0.908）或<strong>雜散場調大</strong>（把離子推離 RF 零點、離軸超過逃逸半徑），離子就會被甩出流失；正常冷卻時離軸 \( \lesssim 62 \) px &lt; 逃逸半徑（\( \approx 78 \) px），一顆都不掉。註：贗位能（secular）模式是時間平均近似，<em>本質上看不到這個不穩定</em>；只有真實 RF 模式才有。</p>
       <pre>unstable = !secularFreqs(p).stable          <span class="c">// q≥0.908 或 Krad≤0</span>
 <span class="k">if</span> (unstable) { ay += ejectK*y; az += ejectK*z }     <span class="c">// 反束縛 → 指數甩出</span>
 <span class="k">if</span> (y*y + z*z &gt; escapeRho*escapeRho) ion.lost = <span class="k">true</span>  <span class="c">// 越過電極 → 流失</span></pre>
@@ -431,7 +432,7 @@ coulomb:300000, softening:12     <span class="c">// 庫倫強度與軟化長度<
 gamma:1, dopplerCoef:0.004       <span class="c">// 線寬 Γ 與都普勒靈敏度 k（捕捉速度=γ/k）</span>
 forceScale:260                   <span class="c">// 光壓力尺度 → 冷卻快慢</span>
 noiseAmp:7.5                     <span class="c">// 反衝擴散 → 決定都普勒極限地板</span>
-loss:true, escapeRho:78, ejectK:90    <span class="c">// 流失：逃逸半徑(小→易逃)、不穩定向外甩出</span>
+loss:true, escapeRho:78, cullRadius:380  <span class="c">// 流失：逃逸半徑(小→易逃)；不穩定區發散率由 q 算出</span>
 loading:true, piLaser:true, piRadius:42, piRate:8  <span class="c">// 噴嘴載入：399nm 光游離（單顆原子幾乎必游離）</span></pre>
     </section>
 
