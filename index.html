@@ -251,7 +251,7 @@
 </style>
 </head>
 <body class="pro">
-  <div class="app-ver" id="appVer">v1.5.1</div>
+  <div class="app-ver" id="appVer">v1.5.2</div>
   <header>
     <h1>雷射冷卻 · 線形離子阱<span class="sp">模擬器</span></h1>
     <p>Doppler 雷射冷卻 × 線形 Paul trap：調整失諧與光強，把離子冷卻成庫倫晶體（拖曳可旋轉視角）</p>
@@ -288,7 +288,7 @@
         <button class="act go" id="loadBtn">🧪 噴原子載入</button>
         <span class="load-hint" id="loadHint">👈 先載入離子</span>
         <button class="act ghost" id="clearBtn" title="清空阱；或把「離子數量」拉到 0 重來＝空阱開始">🗑️ 清空阱</button>
-        <button class="act ghost on" id="piBtn">🟣 PI 399nm：開</button>
+        <button class="act ghost" id="piBtn" title="399 nm 光游離雷射（噴原子時會自動點亮；按此可手動常開）">⚫ PI 399nm：關</button>
         <span class="load-count" id="ionLive">阱中 6 顆</span>
       </div>
     </div>
@@ -466,10 +466,12 @@
     F:{nx:0,ny:0,nz:1}, B:{nx:0,ny:0,nz:-1},
   };
   // 線形阱（trapKx 弱、trapKy/Kz 強，已是 physics.js 預設）→ 離子排成立體線形離子鏈
-  const params = Physics.makeParams({ detuning:-0.5, intensity:1.5, trapModel:'rf' });
+  const params = Physics.makeParams({ detuning:-0.5, intensity:1.5, trapModel:'rf', piLaser:false });
   let state = Physics.createState(0, { initialSpeed:120 });   // 預設空阱：用噴嘴載入第一顆
   let prevTrapped = state.ions.length;   // 上一幀阱中離子數（偵測捕獲↑/流失↓ 提示音）
   let animT = 0;         // 噴嘴 / 光游離動畫時鐘
+  let piManual = false;  // 399 手動「常開」狀態（預設關；真實情況不會一直開 399）
+  let piAuto = false;    // 噴原子時自動點亮 399 的暫態旗標
   let _needsLoad = null; // 「空阱請載入」閃動提示的快取狀態
   let running = true;
   let muted = false;
@@ -666,17 +668,27 @@
   $('heatBtn').addEventListener('click', () => { ensureAudio(); heat(); });
   $('resetBtn').addEventListener('click', () => { ensureAudio(); resetIons(parseInt(ionCount.value,10)); blip(523,0.06); });
   // 噴嘴 loading：噴中性原子束、清空阱、399 nm 光游離雷射開關
-  $('loadBtn').addEventListener('click', () => { ensureAudio(); Physics.spawnAtoms(state, params, 1, Math.random); blip(300, 0.05); });
+  // 399 PI 雷射的按鈕外觀（反映目前是否點亮）
+  function updatePiBtn() {
+    const on = params.piLaser, b = $('piBtn');
+    b.classList.toggle('on', on);
+    b.textContent = on ? '🟣 PI 399nm：開' : '⚫ PI 399nm：關';
+  }
+  $('loadBtn').addEventListener('click', () => {
+    ensureAudio();
+    params.piLaser = true; piAuto = true; updatePiBtn();   // 噴原子時自動點亮 399
+    Physics.spawnAtoms(state, params, 1, Math.random);
+    blip(300, 0.05);
+  });
   $('clearBtn').addEventListener('click', () => {
     ensureAudio(); state.ions.length = 0; state.lost = 0; prevTrapped = 0;
     coldTimer = 0; won = false; $('win').classList.remove('show'); blip(200, 0.05);
   });
   $('piBtn').addEventListener('click', () => {
     ensureAudio();
-    params.piLaser = !params.piLaser;
-    $('piBtn').classList.toggle('on', params.piLaser);
-    $('piBtn').textContent = params.piLaser ? '🟣 PI 399nm：開' : '⚫ PI 399nm：關';
-    blip(params.piLaser ? 460 : 300, 0.05);
+    piManual = !piManual; piAuto = false; params.piLaser = piManual;   // 手動常開／關
+    updatePiBtn();
+    blip(piManual ? 460 : 300, 0.05);
   });
   $('pauseBtn').addEventListener('click', () => {
     ensureAudio();
@@ -834,8 +846,10 @@
     if (theme === 'pro') { ctx.fillStyle='rgba(200,210,230,0.78)'; ctx.font=`${Math.max(9,12*o.scale)|0}px ui-sans-serif,sans-serif`; ctx.textAlign='center'; ctx.fillText('oven', o.sx, o.sy + r + 13*o.scale); }
     // 399 nm 光游離雷射：斜向束穿過阱中心（與冷卻光區隔）+ 呼吸式游離光斑 + 標籤
     if (on) {
-      const dl = 235, dx = 0.62, dy = 0.26, dz = -0.74;          // 斜向單位向量（非軸向）
-      const a1 = project(-dx*dl, -dy*dl, -dz*dl), b1 = project(dx*dl, dy*dl, dz*dl);
+      // 沿著原子束路徑（噴嘴→阱中心）打 399，剛好命中飛行中的原子
+      const bl = Math.hypot(params.nozzleX, params.nozzleY, params.nozzleZ) || 1;
+      const ux = -params.nozzleX/bl, uy = -params.nozzleY/bl, uz = -params.nozzleZ/bl;
+      const a1 = project(-ux*140, -uy*140, -uz*140), b1 = project(ux*165, uy*165, uz*165);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.lineCap = 'round';
@@ -1073,6 +1087,8 @@
     if (nIon < prevTrapped) blip(165, 0.09);        // 流失
     else if (nIon > prevTrapped) blip(880, 0.05);   // 捕獲
     prevTrapped = nIon;
+    // 噴原子結束（原子已被游離或穿出阱）→ 自動關掉 399（回到手動常開／關的狀態）
+    if (piAuto && cts.neutral === 0) { piAuto = false; if (params.piLaser !== piManual) { params.piLaser = piManual; updatePiBtn(); } }
     // 空阱（無離子、無飛行中原子）→ 閃動提示「按這裡載入」
     const needsLoad = cts.trapped === 0 && cts.neutral === 0;
     if (needsLoad !== _needsLoad) {
@@ -1154,7 +1170,7 @@
   }
 
   // ---------- 啟動 ----------
-  fit(); applyTheme(theme); setTrapModel(params.trapModel);   // 預設啟動就用真實 RF
+  fit(); applyTheme(theme); setTrapModel(params.trapModel); updatePiBtn();   // 預設啟動就用真實 RF
   requestAnimationFrame(loop);
 })();
 </script>

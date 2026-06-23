@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-06-23
+
+### Changed
+- The 399 nm photoionization laser is now off by default and **auto-fires only while an atom is being loaded** (then turns itself off) — matching real loading, where the PI laser isn't left on. The PI button becomes a manual "keep on" override.
+- The 399 nm beam now runs **along the atomic-beam path** (nozzle → trap centre), so it visibly strikes the atoms it ionizes.
+
 ## [1.5.1] - 2026-06-23
 
 ### Changed
