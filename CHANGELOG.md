@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-23
+
+### Added
+- Ion loss physics — ions now escape the trap when it can no longer hold them: radial instability (Mathieu q ≥ 0.908) or a non-binding pseudopotential (Krad ≤ 0) flings them out past the electrode aperture, after which they fly off and are removed from the simulation. Enabled by default, with the default trap deep enough that normal cooling/heating loses no ions.
+- Live "trapped N · lost M" readout, a loss-cue sound, and escaping ions drawn as fading red streaks.
+- Empty-trap handling so an emptied trap no longer reads as a crystal or triggers a win.
+- Tunable knobs in `physics.js` DEFAULTS: `loss`, `escapeRho` (electrode aperture), `cullRadius`, `ejectK`.
+- Escape-physics unit tests: q > 0.908 loss, Krad ≤ 0 loss, deep-trap zero-loss, loss-disabled flag, and loss conservation.
+- Help section ⑧ on ion loss and the q ≥ 0.908 stability boundary.
+
+### Changed
+- Initial hot cloud is seeded anisotropically (long axial, tight radial) so freshly loaded ions start inside the capture region.
+- Ignore the local-only `tutorial/` folder in `.gitignore`.
+
 ## [1.2.1] - 2026-06-23
 
 ### Documentation

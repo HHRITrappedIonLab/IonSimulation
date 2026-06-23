@@ -276,6 +276,7 @@
           <div class="stat"><div class="v" id="timeVal">--</div><div class="k">冷卻用時 / 最佳</div></div>
         </div>
         <div class="legend"><span>慢·冷</span><div class="bar"></div><span>快·熱</span></div>
+        <div class="legend" style="margin-top:8px"><span class="pill" id="ionLive">阱中 6 顆</span></div>
       </div>
 
       <div class="card">
@@ -398,6 +399,9 @@
 
       <h4>⑦ 沒辦法完全靜止？</h4>
       <p>離子吐出光的時候也會被反衝一下下，所以永遠會有一點點抖動，沒辦法到絕對零度。這個最低溫叫做<b>都普勒極限</b>。</p>
+
+      <h4>⑧ 沒抓好就「跑掉」了！💨</h4>
+      <p>離子阱能抓住離子是有<b>極限</b>的。如果把電極調到<b>抓不穩</b>的設定（專業版可以看右邊：Mathieu <b>q 值超過 0.908 會變紅</b>，或雜散電場太強），離子就會被<b>甩出阱外、再也抓不回來</b>——這在真實實驗裡叫做<b>離子流失 (ion loss)</b>。所以科學家都會很小心地把參數設在<b>穩定區</b>裡喔！</p>
     </div>
   </div>
 
@@ -784,6 +788,27 @@
     const tdx = pa.sx - sx, tdy = pa.sy - sy, tl = Math.hypot(tdx, tdy);
     const ux = tl > 0.5 ? tdx/tl : 0, uy = tl > 0.5 ? tdy/tl : 0;
 
+    // 流失中的離子：紅色拖尾、飛出捕獲區，隨距離淡出（沒抓住就散掉）
+    if (ion.lost) {
+      const rr = Math.hypot(ion.x, ion.y, ion.z);
+      const fade = clamp(1 - (rr - TRAP_R) / (params.cullRadius - TRAP_R), 0.12, 1);
+      ctx.save();
+      ctx.globalAlpha = fade * clamp(fogB(pr.depth), 0.5, 1);
+      if (tl > 0.5) {
+        const len = Math.min(64, sp*0.22)*sc;
+        const grad = ctx.createLinearGradient(sx,sy,sx-ux*len,sy-uy*len);
+        grad.addColorStop(0,'rgba(255,95,70,0.7)'); grad.addColorStop(1,'rgba(255,95,70,0)');
+        ctx.strokeStyle = grad; ctx.lineWidth = R*1.2; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-ux*len,sy-uy*len); ctx.stroke();
+      }
+      const g = ctx.createRadialGradient(sx,sy,1,sx,sy,R*1.7);
+      g.addColorStop(0,'rgba(255,150,125,0.95)'); g.addColorStop(1,'rgba(255,85,60,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx,sy,R*1.7,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#ff6a4a'; ctx.beginPath(); ctx.arc(sx,sy,R*0.8,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      return;
+    }
+
     ctx.save();
     ctx.globalAlpha = clamp(fogB(pr.depth), 0.55, 1);
     // 尾巴
@@ -916,6 +941,7 @@
   // ---------- 主迴圈 ----------
   let lastTs = 0, acc = 0, histAcc = 0;
   let smoothRms = -1, stateLevel = 2, hudAcc = 0;   // 平滑 rms + 狀態遲滯 + 數字讀數節流
+  let prevIonN = state.ions.length;                 // 上一幀阱中離子數（用來偵測流失）
   const DT = 1/60;
   function loop(ts) {
     if (!lastTs) lastTs = ts;
@@ -928,6 +954,11 @@
       while (acc >= DT && steps < 6) { Physics.step(state, params, DT); acc -= DT; simClock += DT; steps++; }
     }
     updateConfetti(frameDt);
+
+    // 離子流失偵測（沒抓住就散掉）→ 提示音；上升（重來/載入）時不誤觸
+    const nIon = state.ions.length;
+    if (nIon < prevIonN) blip(165, 0.09);
+    prevIonN = nIon;
 
     // 量測：用低通平滑掉 RF micromotion 的快速抖動（代表 secular 溫度）
     // → 溫度 / 狀態 / 提示就不會在「晶體↔液態」之間亂跳
@@ -951,6 +982,7 @@
         $('thermoNum').textContent = Math.round(heatFrac*100);
       }
       $('speedVal').textContent = Math.round(rms);
+      $('ionLive').innerHTML = `阱中 <b>${nIon}</b> 顆` + (state.lost ? ` · 流失 ${state.lost}` : '');
       if (params.trapModel === 'rf') {
         const rr = Physics.radialRMS(state), lvl = rr < 3 ? '無' : rr < 12 ? '弱' : '強';
         $('microReadout').textContent = `離軸 ${rr.toFixed(1)} px · micromotion：${lvl}`;
@@ -961,8 +993,9 @@
     else if (stateLevel === 2) { if (rms < 44) stateLevel = rms < 13 ? 0 : 1; }
     else { if (rms < 13) stateLevel = 0; else if (rms > 50) stateLevel = 2; }
     const pro = theme === 'pro';
-    const label = stateLevel === 0 ? (pro?'晶體 crystal':'💎 晶體') : stateLevel === 1 ? (pro?'液態 liquid':'💧 液態') : (pro?'氣態 gas':'🔥 氣態');
-    const color = stateLevel === 0 ? '#5bd6ff' : stateLevel === 1 ? '#7bff8a' : '#ff8a5a';
+    let label = stateLevel === 0 ? (pro?'晶體 crystal':'💎 晶體') : stateLevel === 1 ? (pro?'液態 liquid':'💧 液態') : (pro?'氣態 gas':'🔥 氣態');
+    let color = stateLevel === 0 ? '#5bd6ff' : stateLevel === 1 ? '#7bff8a' : '#ff8a5a';
+    if (nIon === 0) { label = pro ? '空阱 empty' : '空阱'; color = '#8a98b8'; }   // 離子全流失
     const sb = $('stateBadge'); sb.textContent = label; sb.style.color = color;
 
     // 溫度歷史（每 ~0.1s）
@@ -970,7 +1003,7 @@
 
     // 勝利判定（持續夠冷 1.2 秒）
     if (running) {
-      if (rms < 15 && params.intensity > 0 && params.beams.length > 0) {
+      if (rms < 15 && params.intensity > 0 && params.beams.length > 0 && state.ions.length > 0) {
         coldTimer += frameDt;
         if (coldTimer > 1.2 && !won) {
           won = true;

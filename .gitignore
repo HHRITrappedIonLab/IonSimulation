@@ -10,3 +10,6 @@
 # Node (none currently, but in case tooling is added)
 node_modules/
 npm-debug.log*
+
+# Local-only tutorial / documentation drafts (not published to GitHub)
+tutorial/

@@ -44,6 +44,12 @@
 
     maxSpeed: 340,       // 速度上限 (px/s)
     substeps: 3,
+
+    // ---- 離子流失（沒抓住就散掉）----
+    loss: true,          // 開啟：離開捕獲區的離子會「散掉」並從模擬移除
+    escapeRho: 100,      // 離軸(徑向)逃逸半徑 (px)：離軸超過 → 視為撞上/越過電極 → 流失（≈ 電極孔徑 ROD_R）
+    cullRadius: 380,     // 流失離子彈道飛出此半徑後從陣列移除 (px，畫面外)
+    ejectK: 50,          // 阱不穩定(Mathieu q≥0.908 或 贗位能 Krad≤0)時的向外反束縛剛性 → 指數甩出離子
   });
 
   // 六道光束：±x(左右/軸向)、±y(上下)、±z(前後)。n = 傳播方向(指向中心)。
@@ -80,15 +86,16 @@
     const ions = [];
     for (let i = 0; i < n; i++) {
       const p = randDir(rng), v = randDir(rng);
-      const rad = Math.cbrt(rng()) * R * 0.5;
+      const rad = Math.cbrt(rng()) * R;
       const speed = baseSpeed * (0.5 + rng());
+      // 初始熱雲：線形阱裡沿軸向(x)較長、徑向(y,z)較窄，並維持在捕獲區內（避免一載入就流失）
       ions.push({
-        x: p.x * rad, y: p.y * rad, z: p.z * rad,
+        x: p.x * rad * 0.45, y: p.y * rad * 0.18, z: p.z * rad * 0.18,
         vx: v.x * speed, vy: v.y * speed, vz: v.z * speed,
         flash: 0,
       });
     }
-    return { ions, clock: 0 };
+    return { ions, clock: 0, lost: 0 };
   }
 
   // 第 i 顆離子的保守力加速度（阱 + 3D 庫倫）
@@ -111,6 +118,7 @@
     for (let j = 0; j < ions.length; j++) {
       if (j === i) continue;
       const o = ions[j];
+      if (o.lost) continue;            // 已流失的離子離開了，不再貢獻庫倫力
       const dx = ion.x - o.x, dy = ion.y - o.y, dz = ion.z - o.z;
       const r2 = dx * dx + dy * dy + dz * dz + soft2;
       const r = Math.sqrt(r2);
@@ -149,17 +157,25 @@
     const ions = state.ions;
     const Omega = rf ? p.rfOmega : 0, A = rf ? p.rfAmp : 0;
     if (state.clock == null) state.clock = 0;
+    if (state.lost == null) state.lost = 0;
+    // 阱徑向是否不穩定（Mathieu q≥0.908 或 贗位能 Krad≤0）→ 開啟流失時把離子甩出捕獲區
+    const unstable = p.loss ? !secularFreqs(p).stable : false;
+    const ejectK = p.ejectK || 0;
 
     for (let st = 0; st < sub; st++) {
       const rfCos = rf ? Math.cos(Omega * state.clock) : 0;
-      // (1) 保守力 → 半隱式 Euler（RF 模式帶時變四極力）
+      // (1) 保守力 → 半隱式 Euler（RF 模式帶時變四極力；阱不穩定時加向外反束縛）
       for (let i = 0; i < ions.length; i++) {
+        if (ions[i].lost) continue;                  // 已流失：彈道飛出，不再受阱/庫倫力
         conservativeAccel(state, i, p, acc, rf, A, rfCos);
-        ions[i].vx += acc.ax * h; ions[i].vy += acc.ay * h; ions[i].vz += acc.az * h;
+        let ay = acc.ay, az = acc.az;
+        if (unstable) { ay += ejectK * ions[i].y; az += ejectK * ions[i].z; }   // 反束縛 → 指數甩出
+        ions[i].vx += acc.ax * h; ions[i].vy += ay * h; ions[i].vz += az * h;
       }
-      // (2) 雷射冷卻：平均光壓 + 反衝擴散
+      // (2) 雷射冷卻：平均光壓 + 反衝擴散（已流失的離子不再被冷卻）
       for (let i = 0; i < ions.length; i++) {
         const ion = ions[i];
+        if (ion.lost) continue;
         let ax = 0, ay = 0, az = 0, Rtot = 0;
         for (let b = 0; b < beams.length; b++) {
           const n = beams[b];
@@ -182,13 +198,17 @@
           ion.flash = Math.min(1, Rtot * 0.5);
         }
       }
-      // (3) 更新位置 + 數值保險
-      const R = p.worldRadius, vmax = p.maxSpeed;
+      // (3) 更新位置 + 邊界 / 流失
+      const R = p.worldRadius, vmax = p.maxSpeed, rho2max = p.escapeRho * p.escapeRho;
       for (let i = 0; i < ions.length; i++) {
         const ion = ions[i];
         const sp2 = ion.vx * ion.vx + ion.vy * ion.vy + ion.vz * ion.vz;
         if (sp2 > vmax * vmax) { const k = vmax / Math.sqrt(sp2); ion.vx *= k; ion.vy *= k; ion.vz *= k; }
         ion.x += ion.vx * h; ion.y += ion.vy * h; ion.z += ion.vz * h;
+        if (ion.lost) continue;            // 流失離子：自由飛出，稍後越過 cullRadius 才移除
+        // 離軸(徑向)距離超過逃逸半徑 → 越過電極、離開捕獲區 → 流失（沒抓住就散掉）
+        if (p.loss && (ion.y * ion.y + ion.z * ion.z) > rho2max) { ion.lost = true; continue; }
+        // 仍被捕獲：保留球形軟邊界（數值保險、反射）
         const rr = Math.sqrt(ion.x * ion.x + ion.y * ion.y + ion.z * ion.z);
         if (rr > R) {
           const nx = ion.x / rr, ny = ion.y / rr, nz = ion.z / rr;
@@ -198,6 +218,14 @@
         }
       }
       if (rf) state.clock += h;            // 推進 RF 相位
+    }
+    // 已彈道飛出 cullRadius 的流失離子 → 從模擬移除並累計流失數
+    if (p.loss) {
+      const cull2 = p.cullRadius * p.cullRadius;
+      for (let i = ions.length - 1; i >= 0; i--) {
+        const o = ions[i];
+        if (o.lost && (o.x * o.x + o.y * o.y + o.z * o.z) > cull2) { ions.splice(i, 1); state.lost++; }
+      }
     }
     for (let i = 0; i < ions.length; i++) if (ions[i].flash > 0) ions[i].flash = Math.max(0, ions[i].flash - dt * 4);
   }

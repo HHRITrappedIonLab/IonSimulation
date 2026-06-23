@@ -93,5 +93,43 @@ check('RF 零點上幾乎無 micromotion（std < 1.5px）', m0.std < 1.5);
 check('雜散場把離子推離零點（y_eq ≈ 30px）', Math.abs(m900.yeq - 30) < 6);
 check('離軸時出現明顯 micromotion（std 隨離軸增大）', m900.std > m0.std * 3);
 
+// 7) 沒抓住就散掉：阱不穩定（Mathieu q≥0.908）→ 離子流失
+const unstableRF = (function () {
+  const rng = P.mulberry32(3), state = P.createState(6, { rng, initialSpeed: 120 });
+  const params = P.makeParams({ detuning: -0.5, intensity: 1.5, trapModel: 'rf', rfOmega: 24, rfAmp: 305 });
+  const f = P.secularFreqs(params);
+  for (let i = 0; i < 60 * 5; i++) P.step(state, params, 1 / 60, rng);
+  return { n: state.ions.length, lost: state.lost, q: f.q, stable: f.stable };
+})();
+console.log(`\n不穩定阱 q=${unstableRF.q.toFixed(2)} (stable=${unstableRF.stable})：剩 ${unstableRF.n} 顆，流失 ${unstableRF.lost} 顆`);
+check('q>0.908 判定為不穩定', unstableRF.q > 0.908 && !unstableRF.stable);
+check('不穩定阱 → 離子被甩出流失（剩 < 6）', unstableRF.n < 6, `剩 ${unstableRF.n}`);
+check('流失守恆：剩餘 + 流失 = 6', unstableRF.n + unstableRF.lost === 6);
+
+// 8) 徑向贗位能不束縛（Krad≤0）→ 流失
+const noConfine = (function () {
+  const rng = P.mulberry32(4), state = P.createState(6, { rng, initialSpeed: 120 });
+  const params = P.makeParams({ detuning: -0.5, intensity: 1.5, trapModel: 'rf', rfOmega: 90, rfAmp: 120, trapKx: 4 });
+  const f = P.secularFreqs(params);
+  for (let i = 0; i < 60 * 6; i++) P.step(state, params, 1 / 60, rng);
+  return { n: state.ions.length, Krad: f.Krad };
+})();
+console.log(`徑向不束縛 Krad=${noConfine.Krad.toFixed(1)}：剩 ${noConfine.n} 顆`);
+check('Krad≤0 → 離子流失（剩 < 6）', noConfine.Krad <= 0 && noConfine.n < 6, `Krad=${noConfine.Krad.toFixed(1)}, 剩 ${noConfine.n}`);
+
+// 9) 阱夠深 + 紅失諧冷卻 → 一顆都不流失（預設體驗不受影響）
+const deep = simulate({ detuning: -0.5, intensity: 1.5, seconds: 14, seed: 7 });
+console.log(`阱夠深冷卻：剩 ${deep.state.ions.length} 顆，流失 ${deep.state.lost || 0} 顆`);
+check('阱夠深穩定冷卻 → 零流失（6 顆全留）', deep.state.ions.length === 6 && (deep.state.lost || 0) === 0);
+
+// 10) 關閉 loss（master flag）→ 即使不穩定也不移除離子
+const lossOff = (function () {
+  const rng = P.mulberry32(3), state = P.createState(6, { rng, initialSpeed: 120 });
+  const params = P.makeParams({ detuning: -0.5, intensity: 1.5, trapModel: 'rf', rfOmega: 24, rfAmp: 305, loss: false });
+  for (let i = 0; i < 60 * 5; i++) P.step(state, params, 1 / 60, rng);
+  return { n: state.ions.length };
+})();
+check('關閉 loss 時不移除離子（仍 6 顆）', lossOff.n === 6, `剩 ${lossOff.n}`);
+
 console.log(`\n=== 結果：${failures === 0 ? '全部通過 🎉' : failures + ' 項失敗'} ===`);
 process.exit(failures === 0 ? 0 : 1);
