@@ -304,6 +304,12 @@
     <div class="panel">
       <div class="pcol">
       <div class="card">
+        <h3>📈 溫度變化</h3>
+        <canvas id="graph"></canvas>
+        <div class="hint" id="hint" style="margin-top:8px">調調看下面的滑桿，觀察溫度怎麼變～</div>
+        <button class="help-btn" id="helpBtn">❓ 為什麼雷射可以讓離子變冷？</button>
+      </div>
+      <div class="card">
         <div class="stats">
           <div class="stat"><div class="v" id="tempVal">--</div><div class="k" id="tempK">溫度 T</div></div>
           <div class="stat"><div class="v" id="stateBadge">氣態</div><div class="k">離子狀態</div></div>
@@ -323,19 +329,6 @@
           <span class="ti">T<sub>D</sub> ≈ <b>0.47 mK</b></span>
         </div>
         <div class="row">
-          <label><span id="detuneName">失諧 δ</span><span class="val" id="detuneLab">—</span></label>
-          <input type="range" id="detune" min="-2.5" max="2.5" step="0.05" value="-0.5" />
-          <div class="scale" id="detuneScale"><span>−Γ</span><b>−Γ/2 最佳</b><span>0 共振</span><span>+Γ 加熱</span></div>
-        </div>
-        <div class="row">
-          <label><span id="intensityName">飽和參數 s</span><span class="val" id="intensityLab">—</span></label>
-          <input type="range" id="intensity" min="0" max="8" step="0.1" value="1.5" />
-        </div>
-        <div class="row">
-          <label>離子數量 <span class="val" id="ionCountLab">0 顆</span></label>
-          <input type="range" id="ionCount" min="0" max="14" step="1" value="0" />
-        </div>
-        <div class="row">
           <label>雷射方向（點一點開關）<span class="val" id="beamLab">6 道</span></label>
           <div class="beams3d">
             <i class="bax bax-x"></i><i class="bax bax-y"></i><i class="bax bax-z"></i>
@@ -347,6 +340,19 @@
             <button class="beam-btn on z-beam bpos-b" data-beam="B" title="後方雷射（+z／遠，左上）">後</button>
             <button class="beam-btn on z-beam bpos-f" data-beam="F" title="前方雷射（−z／近，右下）">前</button>
           </div>
+        </div>
+        <div class="row">
+          <label><span id="detuneName">失諧 δ</span><span class="val" id="detuneLab">—</span></label>
+          <input type="range" id="detune" min="-2.5" max="2.5" step="0.05" value="-0.5" />
+          <div class="scale" id="detuneScale"><span>−Γ</span><b>−Γ/2 最佳</b><span>0 共振</span><span>+Γ 加熱</span></div>
+        </div>
+        <div class="row">
+          <label><span id="intensityName">飽和參數 s</span><span class="val" id="intensityLab">—</span></label>
+          <input type="range" id="intensity" min="0" max="8" step="0.1" value="1.5" />
+        </div>
+        <div class="row">
+          <label>離子數量 <span class="val" id="ionCountLab">0 顆</span></label>
+          <input type="range" id="ionCount" min="0" max="14" step="1" value="0" />
         </div>
       </div>
 
@@ -395,13 +401,6 @@
           <div class="rf-readout" id="secularReadout">secular 頻率 …</div>
           <div class="legend" style="margin-top:6px"><span class="pill" id="microReadout">離軸 0.0 px · micromotion：無</span></div>
         </div>
-      </div>
-
-      <div class="card">
-        <h3>📈 溫度變化</h3>
-        <canvas id="graph"></canvas>
-        <div class="hint" id="hint" style="margin-top:8px">調調看上面的滑桿，觀察溫度怎麼變～</div>
-        <button class="help-btn" id="helpBtn">❓ 為什麼雷射可以讓離子變冷？</button>
       </div>
       </div><!-- /pcol 2 -->
     </div>
@@ -833,20 +832,24 @@
     const o = project(params.nozzleX, params.nozzleY, params.nozzleZ), c = project(0,0,0);
     const on = params.piLaser;
     ctx.save();
-    // 原子束底層淡光柱
-    const beamA = on ? 0.22 : 0.12;
-    const grad = ctx.createLinearGradient(o.sx,o.sy,c.sx,c.sy);
-    grad.addColorStop(0,`rgba(188,204,232,${beamA})`); grad.addColorStop(1,'rgba(188,204,232,0)');
-    ctx.strokeStyle = grad; ctx.lineWidth = Math.max(2, 9*o.scale); ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(o.sx,o.sy); ctx.lineTo(c.sx,c.sy); ctx.stroke();
-    // 沿束流流動的微粒（讓原子束「在動」）
-    const NF = 7;
-    for (let i = 0; i < NF; i++) {
-      const f = (animT*0.45 + i/NF) % 1;                    // 0→1：噴嘴口到阱中心
-      const px = o.sx + (c.sx-o.sx)*f, py = o.sy + (c.sy-o.sy)*f;
-      const env = Math.sin(f*Math.PI);                      // 兩端淡、中段亮
-      ctx.fillStyle = `rgba(206,218,238,${env*(on?0.5:0.26)})`;
-      ctx.beginPath(); ctx.arc(px, py, Math.max(1, 2.6*o.scale*(0.5+0.6*env)), 0, Math.PI*2); ctx.fill();
+    // 原子束＋流動粒子（你看到的「水滴」）：只在真的有中性原子在飛時才畫；
+    // 閒置／空阱時 oven 靜止不噴、不滴。
+    if (Physics.counts(state).neutral > 0) {
+      // 原子束底層淡光柱
+      const beamA = on ? 0.22 : 0.12;
+      const grad = ctx.createLinearGradient(o.sx,o.sy,c.sx,c.sy);
+      grad.addColorStop(0,`rgba(188,204,232,${beamA})`); grad.addColorStop(1,'rgba(188,204,232,0)');
+      ctx.strokeStyle = grad; ctx.lineWidth = Math.max(2, 9*o.scale); ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(o.sx,o.sy); ctx.lineTo(c.sx,c.sy); ctx.stroke();
+      // 沿束流流動的微粒（讓原子束「在動」）
+      const NF = 7;
+      for (let i = 0; i < NF; i++) {
+        const f = (animT*0.45 + i/NF) % 1;                    // 0→1：噴嘴口到阱中心
+        const px = o.sx + (c.sx-o.sx)*f, py = o.sy + (c.sy-o.sy)*f;
+        const env = Math.sin(f*Math.PI);                      // 兩端淡、中段亮
+        ctx.fillStyle = `rgba(206,218,238,${env*(on?0.5:0.26)})`;
+        ctx.beginPath(); ctx.arc(px, py, Math.max(1, 2.6*o.scale*(0.5+0.6*env)), 0, Math.PI*2); ctx.fill();
+      }
     }
     // 噴嘴管口（呼吸式暖光）
     const r = 14*o.scale, ovenGlow = 0.5 + 0.5*Math.sin(animT*2.2);
@@ -1099,6 +1102,12 @@
     if (nIon < prevTrapped) blip(165, 0.09);        // 流失
     else if (nIon > prevTrapped) blip(880, 0.05);   // 捕獲
     prevTrapped = nIon;
+    // 「離子數量」滑桿＋標籤跟著阱中實際顆數走：nozzle 載入↑、流失↓ 都即時反映。
+    // 程式設定 .value 不會觸發 input 事件，所以不會反過來重建離子（無迴圈）。
+    if (+ionCount.value !== nIon) {
+      ionCount.value = nIon;                  // 超過 max 時瀏覽器自動夾在上限
+      $('ionCountLab').textContent = nIon + ' 顆';
+    }
     // 噴原子結束（原子已被游離或穿出阱）→ 自動關掉 399（回到手動常開／關的狀態）
     if (piAuto && cts.neutral === 0) { piAuto = false; if (params.piLaser !== piManual) { params.piLaser = piManual; updatePiBtn(); } }
     // 空阱（無離子、無飛行中原子）→ 閃動提示「按這裡載入」

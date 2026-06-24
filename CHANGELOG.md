@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-06-24
+
+### Added
+- The 離子數量 (ion-count) slider and its "X 顆" label now track the live number of trapped ions: loading atoms with the nozzle moves the slider up as each ion is captured, and losing ions moves it back down. Dragging the slider still sets the ion count directly — programmatic value updates don't refire the input handler, so there's no rebuild loop.
+
+### Changed
+- Reordered the laser-parameters card: the laser-direction click-grid is now the first control, above 失諧 δ / 飽和參數 s / 離子數量.
+- Moved the 📈 溫度變化 (temperature) chart to the top of the side panel so it is the first card shown.
+
+### Fixed
+- The oven's atomic beam and its flowing particles (which looked like a constant "water drip") now render only while neutral atoms are actually in flight; on an idle or empty trap the oven sits still.
+
 ## [1.6.1] - 2026-06-23
 
 ### Changed
